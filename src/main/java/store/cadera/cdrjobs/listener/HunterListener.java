@@ -16,7 +16,9 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.persistence.PersistentDataType;
 import store.cadera.cdrjobs.CdrJobsPlugin;
 import store.cadera.cdrjobs.api.ProfessionActionType;
+import store.cadera.cdrjobs.api.event.HunterPvpRewardEvent;
 import store.cadera.cdrjobs.api.event.ProfessionActionEvent;
+import store.cadera.cdrjobs.api.event.TrialCompleteEvent;
 import store.cadera.cdrjobs.model.JobProgress;
 import store.cadera.cdrjobs.model.JobType;
 import store.cadera.cdrjobs.service.HunterService;
@@ -81,14 +83,10 @@ public final class HunterListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onJoin(PlayerJoinEvent event) {
-        hunter.markOnline(event.getPlayer());
-    }
+    public void onJoin(PlayerJoinEvent event) { hunter.markOnline(event.getPlayer()); }
 
     @EventHandler(priority = EventPriority.MONITOR)
-    public void onQuit(PlayerQuitEvent event) {
-        hunter.markOffline(event.getPlayer());
-    }
+    public void onQuit(PlayerQuitEvent event) { hunter.markOffline(event.getPlayer()); }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onSpawn(CreatureSpawnEvent event) {
@@ -162,6 +160,7 @@ public final class HunterListener implements Listener {
 
         hunter.recordPvpReward(killer);
         boolean countTowardTrials = plugin.getConfig().getBoolean("hunter.pvp.count-toward-trials", true);
+        plugin.getServer().getPluginManager().callEvent(new HunterPvpRewardEvent(killer, victim, baseXp, countTowardTrials));
         grantHunterProgress(killer, baseXp, false, countTowardTrials, "PvP Kill");
     }
 
@@ -169,7 +168,17 @@ public final class HunterListener implements Listener {
         long time = killer.getWorld().getTime();
         boolean night = time >= 13000 && time <= 23000;
 
-        if (countTowardTrials) hunter.recordKill(killer, dangerous, night);
+        if (countTowardTrials) {
+            boolean fangBefore = hunter.fangComplete(killer);
+            boolean moonBefore = hunter.moonComplete(killer);
+            hunter.recordKill(killer, dangerous, night);
+            if (!fangBefore && hunter.fangComplete(killer)) {
+                plugin.getServer().getPluginManager().callEvent(new TrialCompleteEvent(killer, JobType.HUNTER, "trial_of_fang"));
+            }
+            if (!moonBefore && hunter.moonComplete(killer)) {
+                plugin.getServer().getPluginManager().callEvent(new TrialCompleteEvent(killer, JobType.HUNTER, "trial_of_crimson_moon"));
+            }
+        }
         plugin.getServer().getPluginManager().callEvent(new ProfessionActionEvent(killer, JobType.HUNTER, ProfessionActionType.KILL_ENTITY, 1));
 
         double multiplier = Math.max(0.0D, plugin.getConfig().getDouble("hunter.xp-multiplier", 1.0D));
