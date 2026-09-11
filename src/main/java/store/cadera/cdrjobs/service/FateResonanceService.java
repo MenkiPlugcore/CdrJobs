@@ -34,8 +34,10 @@ public final class FateResonanceService {
         for (String id : root.getKeys(false)) {
             ConfigurationSection section = root.getConfigurationSection(id);
             if (section == null || !section.getBoolean("enabled", true)) continue;
-            JobType first = parseJob(section.getString("jobs.0", ""));
-            JobType second = parseJob(section.getString("jobs.1", ""));
+            List<String> jobs = section.getStringList("jobs");
+            if (jobs.size() != 2) continue;
+            JobType first = parseJob(jobs.get(0));
+            JobType second = parseJob(jobs.get(1));
             if (first == null || second == null || first == second) continue;
             int minLevel = Math.max(1, section.getInt("min-level", 50));
             int harmonizedMastery = Math.max(0, section.getInt("harmonized-mastery-tier", 1));
@@ -110,7 +112,7 @@ public final class FateResonanceService {
         StringBuilder out = new StringBuilder();
         for (String word : words) {
             if (word.isBlank()) continue;
-            if (!out.isEmpty()) out.append(' ');
+            if (out.length() > 0) out.append(' ');
             out.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1).toLowerCase(Locale.ROOT));
         }
         return out.toString();
