@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.3.0 — Profession Mastery
+- Added post-Level-100 Profession Mastery for all five Jobs.
+- Profession XP earned at max level is now routed into persistent Mastery XP instead of being discarded.
+- Added configurable Mastery tier cap and XP curve with default Mastery I–X progression.
+- Added cosmetic prestige titles/badges without combat, economy, or gathering power buffs.
+- Added `/cdrjobs mastery [job]` / `/cdrjobs prestige [job]`.
+- Added `/cdrjobs top mastery <job>` and `/cdrjobs top mastery-total` cached leaderboards.
+- Added Mastery PlaceholderAPI values per profession plus profile-wide total tiers/XP.
+- Added `/cdrjobsadmin addmasteryxp` and `/cdrjobsadmin setmastery` for testing/administration.
+- Admin inspect/export now surface Mastery state.
+- Rebirth leaves Mastery untouched; profession reset/full reset removes it through existing profession counter cleanup.
+- Mastery uses the existing `profession_counters` table with one canonical `mastery_total_xp` metric per Job; schema remains `9`.
+
 ## 1.2.0 — Rite of Rebirth
 - Added `/cdrjobs rebirth [job]` and `/cdrjobs respec [job]` with a dedicated two-step confirmation GUI.
 - Added per-profession skill-tree respec without resetting Job level, XP, Trials, lifetime statistics, Fate milestone claims, or active-ability cooldowns.
