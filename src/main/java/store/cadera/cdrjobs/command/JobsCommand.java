@@ -20,6 +20,7 @@ import store.cadera.cdrjobs.util.Colors;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public final class JobsCommand implements CommandExecutor, TabCompleter {
     private final CdrJobsPlugin plugin;
@@ -81,6 +82,17 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(ChatColor.WHITE + "Level: " + ChatColor.AQUA + p.level());
             player.sendMessage(ChatColor.WHITE + "XP: " + ChatColor.AQUA + (p.level() >= levels.maxLevel() ? "MAX" : p.xp() + "/" + req));
             player.sendMessage(ChatColor.LIGHT_PURPLE + "Fate Essence: " + database.getFateEssence(target.getUniqueId()));
+
+            Map.Entry<Integer, Integer> next = plugin.fateMilestones().entrySet().stream()
+                    .filter(entry -> entry.getKey() > p.level())
+                    .min(Map.Entry.comparingByKey())
+                    .orElse(null);
+            if (next == null) {
+                player.sendMessage(ChatColor.DARK_PURPLE + "Next Fate Essence: " + ChatColor.GRAY + "All milestones reached");
+            } else {
+                player.sendMessage(ChatColor.DARK_PURPLE + "Next Fate Essence: " + ChatColor.GRAY + "Lv." + next.getKey() + " (+" + next.getValue() + ")");
+            }
+
             player.sendMessage(ChatColor.DARK_PURPLE + "Runic Surge cooldown: " + ChatColor.GRAY + abilities.cooldownSeconds(target.getUniqueId()) + "s");
             return true;
         }

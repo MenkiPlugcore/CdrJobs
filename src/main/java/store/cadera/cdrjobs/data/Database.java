@@ -8,6 +8,9 @@ import store.cadera.cdrjobs.model.MinerTrialProgress;
 
 import java.io.File;
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 public final class Database implements AutoCloseable {
@@ -37,6 +40,7 @@ public final class Database implements AutoCloseable {
             st.execute("CREATE TABLE IF NOT EXISTS placed_ores (world TEXT NOT NULL, x INTEGER NOT NULL, y INTEGER NOT NULL, z INTEGER NOT NULL, PRIMARY KEY(world, x, y, z))");
             st.execute("CREATE TABLE IF NOT EXISTS miner_trials (uuid TEXT PRIMARY KEY, total_ores INTEGER NOT NULL DEFAULT 0, deep_ores INTEGER NOT NULL DEFAULT 0, rare_ores INTEGER NOT NULL DEFAULT 0, ancient_debris INTEGER NOT NULL DEFAULT 0, stone_complete INTEGER NOT NULL DEFAULT 0, deep_complete INTEGER NOT NULL DEFAULT 0)");
             st.execute("CREATE TABLE IF NOT EXISTS ability_cooldowns (uuid TEXT NOT NULL, ability TEXT NOT NULL, ready_at INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(uuid, ability))");
+            st.execute("CREATE TABLE IF NOT EXISTS fate_milestone_claims (uuid TEXT NOT NULL, job TEXT NOT NULL, milestone INTEGER NOT NULL, PRIMARY KEY(uuid, job, milestone))");
         }
     }
 
@@ -117,6 +121,70 @@ public final class Database implements AutoCloseable {
             }
         } catch (SQLException e) {
             throw new IllegalStateException("Failed to update Fate Essence", e);
+        }
+    }
+
+    public synchronized boolean claimFateMilestoneReward(UUID uuid, JobType job, int milestone, int amount) {
+        try {
+            ensureProfile(uuid);
+            connection.setAutoCommit(false);
+            try (PreparedStatement claim = connection.prepareStatement("INSERT OR IGNORE INTO fate_milestone_claims(uuid,job,milestone) VALUES(?,?,?)");
+                 PreparedStatement reward = connection.prepareStatement("UPDATE player_profile SET fate_essence=fate_essence+? WHERE uuid=?")) {
+                claim.setString(1, uuid.toString());
+                claim.setString(2, job.name());
+                claim.setInt(3, milestone);
+                boolean newlyClaimed = claim.executeUpdate() > 0;
+                if (newlyClaimed) {
+                    reward.setInt(1, Math.max(0, amount));
+                    reward.setString(2, uuid.toString());
+                    reward.executeUpdate();
+                }
+                connection.commit();
+                return newlyClaimed;
+            } catch (SQLException ex) {
+                connection.rollback();
+                throw ex;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to claim Fate Essence milestone", e);
+        }
+    }
+
+    public synchronized void backfillFateMilestoneClaims(Collection<Integer> milestones) {
+        if (milestones == null || milestones.isEmpty()) return;
+        List<ProgressSeed> rows = new ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement("SELECT uuid,job,level FROM job_progress");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) rows.add(new ProgressSeed(rs.getString("uuid"), rs.getString("job"), rs.getInt("level")));
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to inspect existing progression for Fate migration", e);
+        }
+
+        try {
+            connection.setAutoCommit(false);
+            try (PreparedStatement ps = connection.prepareStatement("INSERT OR IGNORE INTO fate_milestone_claims(uuid,job,milestone) VALUES(?,?,?)")) {
+                for (ProgressSeed row : rows) {
+                    for (int milestone : milestones) {
+                        if (milestone <= row.level()) {
+                            ps.setString(1, row.uuid());
+                            ps.setString(2, row.job());
+                            ps.setInt(3, milestone);
+                            ps.addBatch();
+                        }
+                    }
+                }
+                ps.executeBatch();
+                connection.commit();
+            } catch (SQLException ex) {
+                connection.rollback();
+                throw ex;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to migrate Fate milestone claims", e);
         }
     }
 
@@ -228,13 +296,15 @@ public final class Database implements AutoCloseable {
                  PreparedStatement b = connection.prepareStatement("DELETE FROM job_progress WHERE uuid=?");
                  PreparedStatement c = connection.prepareStatement("DELETE FROM player_skills WHERE uuid=?");
                  PreparedStatement d = connection.prepareStatement("DELETE FROM miner_trials WHERE uuid=?");
-                 PreparedStatement e = connection.prepareStatement("DELETE FROM ability_cooldowns WHERE uuid=?")) {
+                 PreparedStatement e = connection.prepareStatement("DELETE FROM ability_cooldowns WHERE uuid=?");
+                 PreparedStatement f = connection.prepareStatement("DELETE FROM fate_milestone_claims WHERE uuid=?")) {
                 String id = uuid.toString();
                 a.setString(1, id); a.executeUpdate();
                 b.setString(1, id); b.executeUpdate();
                 c.setString(1, id); c.executeUpdate();
                 d.setString(1, id); d.executeUpdate();
                 e.setString(1, id); e.executeUpdate();
+                f.setString(1, id); f.executeUpdate();
                 connection.commit();
             } catch (SQLException ex) {
                 connection.rollback();
@@ -257,6 +327,18 @@ public final class Database implements AutoCloseable {
         }
     }
 
+    public synchronized boolean isPlacedOre(Location loc) {
+        try (PreparedStatement ps = connection.prepareStatement("SELECT 1 FROM placed_ores WHERE world=? AND x=? AND y=? AND z=? LIMIT 1")) {
+            ps.setString(1, loc.getWorld().getUID().toString());
+            ps.setInt(2, loc.getBlockX()); ps.setInt(3, loc.getBlockY()); ps.setInt(4, loc.getBlockZ());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to inspect placed ore", e);
+        }
+    }
+
     public synchronized boolean consumePlacedOre(Location loc) {
         String sql = "DELETE FROM placed_ores WHERE world=? AND x=? AND y=? AND z=?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -272,4 +354,6 @@ public final class Database implements AutoCloseable {
     public void close() throws SQLException {
         if (connection != null && !connection.isClosed()) connection.close();
     }
+
+    private record ProgressSeed(String uuid, String job, int level) {}
 }

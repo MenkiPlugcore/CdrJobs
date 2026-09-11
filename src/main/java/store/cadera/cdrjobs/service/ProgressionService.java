@@ -53,8 +53,7 @@ public final class ProgressionService {
 
         Map<Integer, Integer> milestones = plugin.fateMilestones();
         int reward = milestones.getOrDefault(newLevel, 0);
-        if (reward > 0) {
-            database.addFateEssence(player.getUniqueId(), reward);
+        if (reward > 0 && database.claimFateMilestoneReward(player.getUniqueId(), job, newLevel, reward)) {
             player.sendMessage(Colors.color(plugin.prefix() + plugin.message("fate-earned")
                     .replace("%amount%", String.valueOf(reward))));
         }

@@ -1,4 +1,4 @@
-# CdrJobs v0.1.1 — TRIALS OF THE DEEP
+# CdrJobs v0.1.2 — RUNEBOUND TEMPERING
 # MENKIESTES SOFTWARE / CADERA
 
 settings:
@@ -6,6 +6,13 @@ settings:
   actionbar-xp: true
   levelup-sound: true
   save-on-disable: true
+
+  # Default values preserve the original v0.1.x XP curve:
+  # required XP = base + linear*(level-1) + quadratic*(level-1)^2
+  xp-curve:
+    base-xp: 100
+    linear-growth: 0
+    quadratic-growth: 15
 
 # Fate Essence is intentionally scarce. Players must choose their build carefully.
 fate-essence-milestones:
@@ -17,6 +24,9 @@ fate-essence-milestones:
 
 miner:
   enabled: true
+
+  # Global tuning knob for Miner activity XP without editing every ore entry.
+  xp-multiplier: 1.0
 
   xp:
     COAL_ORE: 4
@@ -58,3 +68,9 @@ anti-exploit:
   # Ore placed by a player never grants profession XP or trial progress when broken.
   # Coordinates are persisted in SQLite, so restarting the server does not bypass this protection.
   placed-ore-tracking: true
+
+  # Keeps placed-ore identity when pistons move tracked ores.
+  piston-move-tracking: true
+
+  # Removes stale placed-ore coordinates when an explosion destroys them.
+  cleanup-exploded-ores: true

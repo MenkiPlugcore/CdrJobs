@@ -45,13 +45,14 @@ public final class CdrJobsPlugin extends JavaPlugin {
         try {
             database = new Database(getDataFolder());
             database.connect();
+            database.backfillFateMilestoneClaims(fateMilestones().keySet());
         } catch (Exception e) {
             getLogger().log(Level.SEVERE, "Failed to initialize SQLite. CdrJobs cannot start.", e);
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
 
-        levelService = new LevelService(getConfig().getInt("settings.max-level", 100));
+        levelService = new LevelService(this);
         ProgressionService progression = new ProgressionService(this, database, levelService);
         MinerTrialService trials = new MinerTrialService(this, database);
         SkillService skills = new SkillService(this, database, trials);
@@ -72,7 +73,7 @@ public final class CdrJobsPlugin extends JavaPlugin {
             getLogger().info("PlaceholderAPI detected. CdrJobs placeholders enabled.");
         }
 
-        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — TRIALS OF THE DEEP enabled.");
+        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — RUNEBOUND TEMPERING enabled.");
         getLogger().info("Choose Your Path, Shape Your Fate.");
     }
 

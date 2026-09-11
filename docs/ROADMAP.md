@@ -5,7 +5,9 @@ CdrJobs is developed profession-by-profession. A profession must be stable befor
 ## Runebound Delver — Miner
 - [x] v0.1.0 — Core XP, Lv.1–100, Fate Essence, Path of Ascension, SQLite, anti placed-ore exploit
 - [x] v0.1.1 — Profession Trials, Runic Surge active ability, persistent cooldowns
-- [ ] v0.1.2 — Miner stability & balance pass, exploit hardening, testing QoL
+- [x] v0.1.2 — Miner stability & balance pass, Fate ledger, exploit hardening, configurable XP curve
+
+Miner now acts as the reference implementation for future CdrJobs professions.
 
 ## Future standalone professions
 - [ ] v0.2.x — Verdant Keeper (Farmer)
