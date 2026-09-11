@@ -1,50 +1,34 @@
 # Changelog
 
+## 1.0.5 — Admin & Debug Tools
+- Added `/cdrjobsadmin addessence <player> <amount>`.
+- Added `/cdrjobsadmin setessence <player> <amount>`.
+- Added `/cdrjobsadmin resetjob <player> <job>` to reset one profession without deleting global Fate Essence or other jobs.
+- Added `/cdrjobsadmin resettrial <player> <job>`.
+- Added `/cdrjobsadmin resetcooldown <player> <job>`.
+- Expanded `/cdrjobsadmin inspect <player>` with counters, trial flags, Miner trial state, all skill ranks and cooldowns.
+- Added `/cdrjobsadmin export <player> [file|console|both]` for support/debug snapshots.
+- Debug exports include version, schema, all five profession levels/XP/ranks, Fate Essence, counters, flags, skills, cooldowns and latest Hunter decision.
+- No database schema migration; schema remains `9`.
+
 ## 1.0.4 — Hunter QoL & Safety
-- Replaced ambiguous unlisted-mob behavior with `hunter.mob-filter.mode: ALL|WHITELIST`.
-- Added optional Hunter mob blacklist; blacklist always overrides whitelist/ALL mode.
-- Added separate rewarded `mob_kills` and `pvp_kills` counters.
-- Added PlaceholderAPI: `%cdrjobs_hunter_mob_kills%` and `%cdrjobs_hunter_pvp_kills%`.
-- Added `/cdrjobsadmin hunterdebug <player>` with the latest Hunter reward decision and safety state.
-- Added PvP same-IP block option, minimum victim online time, minimum victim total playtime, same-victim cooldown and rolling kill-streak reward limit.
-- Mob and PvP actionbars are now clearly distinguished.
-- Existing spawner/breeding exclusions remain active.
-- No database schema change; schema remains `9`.
+- Added `hunter.mob-filter.mode: ALL|WHITELIST` and optional mob blacklist.
+- Added separate rewarded `mob_kills` and `pvp_kills` counters/placeholders.
+- Added `/cdrjobsadmin hunterdebug <player>`.
+- Added configurable same-IP protection, minimum victim online/playtime, same-victim cooldown and rolling PvP reward limit.
+- Mob and PvP actionbars are now distinguished.
 
 ## 1.0.3 — Hunter Configurability Hotfix
 - Added configurable PvP Hunter XP and Trial participation.
 - Added persistent same-victim PvP reward cooldown.
-- Added configurable allow-unlisted/fallback mob behavior.
+- Added configurable unlisted/fallback mob behavior.
 
 ## 1.0.2 — Hunter Progression Hotfix
 - Hunter mob kills can progress even when the mob is not explicitly listed, using fallback XP.
-- Player kills were separated from mob handling.
 
 ## 1.0.1 — Stability Patch
-- Added `/cdrjobsadmin inspect <player>`.
-- Hardened admin numeric validation, reload behavior and config checks.
-- Added XP overflow protection and schema health diagnostics.
+- Added player inspect, hardened admin input/reload/config validation and XP overflow protection.
 
 ## 1.0.0 — Five Paths
-- First standalone production baseline.
-- Five professions: Miner, Farmer, Hunter, Lumberjack and Fisher.
-- Global Fate Essence, profession skill trees, trials, active abilities and awakened paths.
-- SQLite persistence, anti-exploit protections, public API/events and PlaceholderAPI integration.
-
-## 0.9.0 — Adventurer API
-- Public CdrJobsAPI, profession events, schema marker, diagnostics and production test matrix.
-
-## 0.5.0 — Call of the Deep
-- Tidebound Angler (Fisher), anti-AFK, trials, Ocean's Call.
-
-## 0.4.0 — Oath of the Ancient Grove
-- Ironbark Warden (Lumberjack), placed-log protection, trials, Grove Rhythm.
-
-## 0.3.0 — Blood Moon
-- Bloodfang Stalker (Hunter), spawn-origin protection, trials, Crimson Hunt.
-
-## 0.2.0 — Verdant Awakening
-- Verdant Keeper (Farmer), harvest anti-spam, Rootbound, trials, Verdant Bloom.
-
-## 0.1.x — Runebound Chapters
-- Runebound Delver, Fate Essence, skill tree, trials, Runic Surge and exploit hardening.
+- First standalone production baseline with Miner, Farmer, Hunter, Lumberjack and Fisher.
+- Fate Essence, skill trees, trials, active abilities, persistence, anti-exploit, public API/events and PlaceholderAPI.
