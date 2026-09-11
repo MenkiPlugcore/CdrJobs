@@ -1,11 +1,9 @@
 # Changelog
 
 ## 1.0.5 — Admin & Debug Tools
-- Added `/cdrjobsadmin addessence <player> <amount>`.
-- Added `/cdrjobsadmin setessence <player> <amount>`.
-- Added `/cdrjobsadmin resetjob <player> <job>` to reset one profession without deleting global Fate Essence or other jobs.
-- Added `/cdrjobsadmin resettrial <player> <job>`.
-- Added `/cdrjobsadmin resetcooldown <player> <job>`.
+- Added `/cdrjobsadmin addessence <player> <amount>` and `/cdrjobsadmin setessence <player> <amount>`.
+- Added `/cdrjobsadmin resetjob <player> <job>`, preserving the Fate milestone claim ledger to prevent duplicate Essence after re-leveling.
+- Added `/cdrjobsadmin resettrial <player> <job>` and `/cdrjobsadmin resetcooldown <player> <job>`.
 - Expanded `/cdrjobsadmin inspect <player>` with counters, trial flags, Miner trial state, all skill ranks and cooldowns.
 - Added `/cdrjobsadmin export <player> [file|console|both]` for support/debug snapshots.
 - Debug exports include version, schema, all five profession levels/XP/ranks, Fate Essence, counters, flags, skills, cooldowns and latest Hunter decision.
