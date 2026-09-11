@@ -1,4 +1,4 @@
-# CdrJobs v0.4.0 — OATH OF THE ANCIENT GROVE
+# CdrJobs v0.5.0 — CALL OF THE DEEP
 settings:
   max-level: 100
   actionbar-xp: true
@@ -29,18 +29,20 @@ hunter:
 lumberjack:
   enabled: true
   xp-multiplier: 1.0
-  xp:
-    OAK_LOG: 4
-    SPRUCE_LOG: 4
-    BIRCH_LOG: 4
-    JUNGLE_LOG: 5
-    ACACIA_LOG: 5
-    DARK_OAK_LOG: 6
-    MANGROVE_LOG: 7
-    CHERRY_LOG: 7
-    CRIMSON_STEM: 8
-    WARPED_STEM: 8
+  xp: { OAK_LOG: 4, SPRUCE_LOG: 4, BIRCH_LOG: 4, JUNGLE_LOG: 5, ACACIA_LOG: 5, DARK_OAK_LOG: 6, MANGROVE_LOG: 7, CHERRY_LOG: 7, CRIMSON_STEM: 8, WARPED_STEM: 8 }
   anti-exploit: { piston-tracking: true }
   trials: { trial-of-timber: { logs: 750 }, trial-of-ancient-grove: { logs: 3000, elder-logs: 300 } }
   abilities: { grove-rhythm: { duration-seconds: 20, cooldown-seconds: 300, xp-bonus-percent: 25.0 } }
+fisher:
+  enabled: true
+  xp-multiplier: 1.0
+  treasure-xp: 20
+  xp: { COD: 5, SALMON: 6, TROPICAL_FISH: 10, PUFFERFISH: 12 }
+  anti-exploit:
+    afk-after-seconds: 600
+  trials:
+    trial-of-tide: { catches: 250 }
+    trial-of-abyss: { catches: 1000, treasures: 50, ocean-catches: 100 }
+  abilities:
+    oceans-call: { duration-seconds: 20, cooldown-seconds: 300, xp-bonus-percent: 25.0 }
 anti-exploit: { placed-ore-tracking: true, piston-move-tracking: true, cleanup-exploded-ores: true }

@@ -2,34 +2,42 @@
 
 **Choose Your Path, Shape Your Fate.**
 
-Current development version: `v0.4.0 — Oath of the Ancient Grove`.
+Current development version: `v0.5.0 — Call of the Deep`.
 
-## Released
+## Five standalone professions
 - ⛏ Runebound Delver — Miner
 - 🌿 Verdant Keeper — Farmer
 - ⚔ Bloodfang Stalker — Hunter
 - 🪓 Ironbark Warden — Lumberjack
+- 🎣 Tidebound Angler — Fisher
 
-Next: 🎣 Tidebound Angler — Fisher, then production hardening/API.
+Every profession has Lv.1–100 progression, fantasy rank titles, a branching Path of Ascension, trials, an active ability and an awakened endgame path.
 
-## Core systems
-- Lv.1–100 per profession
+## Shared systems
 - Global scarce Fate Essence
-- Branching fantasy skill trees
-- Trials + awakened endgame skills
-- Active abilities with persistent cooldowns
-- SQLite persistence
-- Profession-specific anti-exploit systems
-- PlaceholderAPI
-- Admin test commands
+- One-time Fate milestone claims per profession
+- Configurable XP curve and profession multipliers
+- SQLite persistence with non-destructive table creation
+- Profession-specific anti-exploit mechanics
+- GUI navigation
+- PlaceholderAPI (optional)
+- Admin testing commands
 
 ## Commands
-`/cdrjobs`, `/cdrjobs stats`, `/cdrjobs <job>`, `/cdrjobs trials <job>`, `/cdrjobs ability <job>`
-
-Admin: `/cdrjobsadmin addxp <player> [job] <amount>`, `/cdrjobsadmin setlevel <player> [job] <level>`, `/cdrjobsadmin reset <player>`, `/cdrjobsadmin reload`.
+- `/cdrjobs`
+- `/cdrjobs stats [player]`
+- `/cdrjobs <miner|farmer|hunter|lumberjack|fisher>`
+- `/cdrjobs trials <job>`
+- `/cdrjobs ability <job>`
+- `/cdrjobsadmin addxp <player> [job] <amount>`
+- `/cdrjobsadmin setlevel <player> [job] <level>`
+- `/cdrjobsadmin reset <player>`
+- `/cdrjobsadmin reload`
 
 ## Build
-Java 21 / Paper 1.21.4 API.
+Java 21, Paper API 1.21.4.
 ```bash
 mvn clean package
 ```
+
+Next: `v0.9.0` production candidate hardening + public API. MENKIESTESParty integration starts only after standalone `v1.0.0`.
