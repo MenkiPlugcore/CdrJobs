@@ -46,6 +46,14 @@ public final class LeaderboardService implements AutoCloseable {
         return cached("activity:" + job.name(), () -> queryActivity(job));
     }
 
+    public List<LeaderboardRow> mastery(JobType job) {
+        return cached("mastery:" + job.name(), () -> queryCounter(job.name(), MasteryService.METRIC));
+    }
+
+    public List<LeaderboardRow> masteryTotal() {
+        return cached("mastery:total", this::queryMasteryTotal);
+    }
+
     public void invalidateAll() {
         cache.clear();
     }
@@ -100,7 +108,7 @@ public final class LeaderboardService implements AutoCloseable {
     }
 
     private synchronized List<LeaderboardRow> queryCounter(String job, String metric) {
-        String sql = "SELECT uuid,value FROM profession_counters WHERE job=? AND metric=? ORDER BY value DESC LIMIT ?";
+        String sql = "SELECT uuid,value FROM profession_counters WHERE job=? AND metric=? AND value>0 ORDER BY value DESC LIMIT ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, job);
             ps.setString(2, metric);
@@ -112,6 +120,22 @@ public final class LeaderboardService implements AutoCloseable {
             }
         } catch (SQLException e) {
             throw new IllegalStateException("Failed to load activity leaderboard", e);
+        }
+    }
+
+    private synchronized List<LeaderboardRow> queryMasteryTotal() {
+        String sql = "SELECT uuid,SUM(value) AS total_mastery_xp FROM profession_counters "
+                + "WHERE metric=? GROUP BY uuid HAVING total_mastery_xp>0 ORDER BY total_mastery_xp DESC LIMIT ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, MasteryService.METRIC);
+            ps.setInt(2, limit());
+            try (ResultSet rs = ps.executeQuery()) {
+                List<LeaderboardRow> rows = new ArrayList<>();
+                while (rs.next()) rows.add(row(rs.getString(1), rs.getLong(2), 0L));
+                return rows;
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to load total Mastery leaderboard", e);
         }
     }
 
