@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.2.0 — Verdant Awakening
+
+Second standalone profession: Verdant Keeper (Farmer).
+
+### Added
+- Farmer Lv.1–100 and fantasy rank titles
+- Mature crop XP table with global Farmer multiplier
+- Persistent per-location harvest reward cooldown to reduce bone-meal spam
+- Farmer Path of Ascension
+- Greenblood, Rootbound, Sunpetal, Verdant Bloom, Blessing of Gaia, Spirit of the Grove, Verdant Dominion
+- Rootbound auto-replant for supported crops
+- Trial of Seed and Trial of Gaia
+- Verdant Bloom active ability with persistent cooldown
+- Generic profession counters and flags stored in the existing SQLite database
+- Generic admin XP/level commands with a job selector
+- Farmer level/rank PlaceholderAPI values
+
+### Changed
+- Main profession menu now exposes both Miner and Farmer
+- Level-up message now uses the actual profession name instead of hardcoded Miner text
+- Admin testing commands can target any job id
+
 ## 0.1.2 — Runebound Tempering
 
 Miner stability and balance pass before the next profession chapter.
@@ -19,56 +41,20 @@ Miner stability and balance pass before the next profession chapter.
 - Exploded placed ores no longer leave stale anti-exploit coordinates behind
 - Max-level actionbar now respects configured `settings.max-level` instead of displaying a hardcoded 100
 
-### Compatibility
-- Existing SQLite data is preserved
-- Existing players at or above old Fate milestones are marked as already claimed during migration, preventing duplicate rewards
-- Default XP curve remains numerically identical to v0.1.0/v0.1.1 unless the server changes the new tuning values
-
 ## 0.1.1 — Trials of the Deep
 
-Second Runebound development chapter. Miner progression now includes proof-of-mastery objectives and its first active ability.
-
 ### Added
-- `Trial of Stone` with persistent natural-ore progress
-- `Trial of the Deep` with deep ore, rare ore and Ancient Debris objectives
-- Trial progress GUI via `/cdrjobs trials`
-- New fantasy skill: `Runic Surge`
-- `/cdrjobs ability` to activate Runic Surge
-- Persistent ability cooldowns in SQLite
-- Runic Surge Haste + configurable temporary Miner XP bonus
-- Trial requirements for Runic Surge and Heart of the Mountain
-- Trial and cooldown PlaceholderAPI values
-- Automatic merging of new config/message defaults during upgrades
-
-### Changed
-- Miner skill GUI expanded to include Profession Trials
-- Heart of the Mountain now requires completion of Trial of the Deep
-- Natural ore mining is now the source of both XP and trial progression
-- Player-placed ore remains excluded from XP and trial progress, including across restarts
-
-### PlaceholderAPI
-- `%cdrjobs_miner_trial_stone%`
-- `%cdrjobs_miner_trial_deep%`
-- `%cdrjobs_miner_total_ores%`
-- `%cdrjobs_miner_deep_ores%`
-- `%cdrjobs_miner_rare_ores%`
-- `%cdrjobs_miner_ancient_debris%`
-- `%cdrjobs_runic_surge_cooldown%`
+- Trial of Stone and Trial of the Deep
+- Runic Surge active ability
+- Persistent cooldowns and trial progress
+- Trial-gated high-tier Miner skills
 
 ## 0.1.0 — The Runeborn
 
-First development chapter of CdrJobs.
-
 ### Added
-- Runebound Delver (Miner) profession
-- Levels 1–100 and fantasy rank titles
-- Configurable ore XP
-- Global Fate Essence milestones
-- Path of Ascension GUI
-- Stonewhisper, Runebreaker, Deepborn, Gemseeker, Echo of the Depth, Heart of the Mountain
-- Persistent SQLite player progress
-- Persistent placed-ore anti XP exploit tracking
-- `/cdrjobs`, `/cdrjobs stats`, `/cdrjobs skills`
-- Admin XP, level, reset and reload commands
-- PlaceholderAPI placeholders
-- GitHub Actions Maven build workflow
+- Runebound Delver (Miner)
+- Levels 1–100, Fate Essence and Path of Ascension
+- SQLite persistence
+- Persistent placed-ore exploit tracking
+- PlaceholderAPI
+- GitHub Actions build workflow
