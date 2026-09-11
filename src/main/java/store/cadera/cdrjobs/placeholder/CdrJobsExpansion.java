@@ -10,6 +10,7 @@ import store.cadera.cdrjobs.data.ProfessionStore;
 import store.cadera.cdrjobs.model.JobProgress;
 import store.cadera.cdrjobs.model.JobType;
 import store.cadera.cdrjobs.model.MinerTrialProgress;
+import store.cadera.cdrjobs.service.ContractService;
 import store.cadera.cdrjobs.service.LevelService;
 import store.cadera.cdrjobs.service.MasteryService;
 import store.cadera.cdrjobs.service.ProfileService;
@@ -22,15 +23,18 @@ public final class CdrJobsExpansion extends PlaceholderExpansion {
     private final LevelService levels;
     private final ProfileService profiles;
     private final MasteryService mastery;
+    private final ContractService contracts;
 
     public CdrJobsExpansion(CdrJobsPlugin plugin, Database db, ProfessionStore store,
-                            LevelService levels, ProfileService profiles, MasteryService mastery) {
+                            LevelService levels, ProfileService profiles, MasteryService mastery,
+                            ContractService contracts) {
         this.plugin = plugin;
         this.db = db;
         this.store = store;
         this.levels = levels;
         this.profiles = profiles;
         this.mastery = mastery;
+        this.contracts = contracts;
     }
 
     @Override public @NotNull String getIdentifier() { return "cdrjobs"; }
@@ -45,7 +49,9 @@ public final class CdrJobsExpansion extends PlaceholderExpansion {
 
         if (query.equals("fate_essence")) return String.valueOf(db.getFateEssence(player.getUniqueId()));
 
-        // Legacy Miner placeholders are checked before generic miner_* parsing.
+        if (query.startsWith("contract_daily_")) return contractValue(player, ContractService.Cadence.DAILY, query.substring("contract_daily_".length()));
+        if (query.startsWith("contract_weekly_")) return contractValue(player, ContractService.Cadence.WEEKLY, query.substring("contract_weekly_".length()));
+
         if (query.equals("miner_trial_stone") || query.equals("miner_trial_deep") || query.equals("miner_total_ores")) {
             MinerTrialProgress trial = db.getMinerTrialProgress(player.getUniqueId());
             return switch (query) {
@@ -81,8 +87,7 @@ public final class CdrJobsExpansion extends PlaceholderExpansion {
                 return switch (tail) {
                     case "level" -> String.valueOf(progress.level());
                     case "xp" -> String.valueOf(progress.xp());
-                    case "xp_required" -> progress.level() >= levels.maxLevel()
-                            ? "0" : String.valueOf(levels.xpRequiredForNextLevel(progress.level()));
+                    case "xp_required" -> progress.level() >= levels.maxLevel() ? "0" : String.valueOf(levels.xpRequiredForNextLevel(progress.level()));
                     case "rank" -> JobRanks.title(job, progress.level());
                     case "mastery_tier" -> String.valueOf(state.tier());
                     case "mastery_roman" -> mastery.roman(state.tier());
@@ -97,6 +102,25 @@ public final class CdrJobsExpansion extends PlaceholderExpansion {
             }
         }
         return null;
+    }
+
+    private String contractValue(OfflinePlayer player, ContractService.Cadence cadence, String tail) {
+        ContractService.ContractView view = contracts.view(player.getUniqueId(), cadence);
+        ContractService.ContractDefinition def = view.definition();
+        return switch (tail) {
+            case "id" -> def.id();
+            case "name" -> def.name();
+            case "job" -> def.job().displayName();
+            case "progress" -> String.valueOf(view.progress());
+            case "target" -> String.valueOf(def.target());
+            case "percent" -> String.valueOf(view.percent());
+            case "complete" -> String.valueOf(view.complete());
+            case "claimed" -> String.valueOf(view.claimed());
+            case "reward_xp" -> String.valueOf(def.rewardXp());
+            case "reward_fate" -> String.valueOf(def.rewardFate());
+            case "rerolls_left" -> String.valueOf(Math.max(0, view.rerollLimit() - view.usedRerolls()));
+            default -> null;
+        };
     }
 
     private String metric(OfflinePlayer player, JobType job, String tail) {
