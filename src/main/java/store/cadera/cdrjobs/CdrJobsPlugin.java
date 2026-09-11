@@ -1,7 +1,210 @@
 package store.cadera.cdrjobs;
-import org.bukkit.Material;import org.bukkit.command.PluginCommand;import org.bukkit.configuration.ConfigurationSection;import org.bukkit.configuration.file.*;import org.bukkit.plugin.java.JavaPlugin;import store.cadera.cdrjobs.api.CdrJobsAPI;import store.cadera.cdrjobs.command.*;import store.cadera.cdrjobs.data.*;import store.cadera.cdrjobs.gui.JobsMenu;import store.cadera.cdrjobs.listener.*;import store.cadera.cdrjobs.placeholder.CdrJobsExpansion;import store.cadera.cdrjobs.service.*;import store.cadera.cdrjobs.util.ConfigValidator;import java.io.*;import java.nio.charset.StandardCharsets;import java.sql.SQLException;import java.util.*;import java.util.logging.Level;
-public final class CdrJobsPlugin extends JavaPlugin{private FileConfiguration messages;private Database db;private ProfessionStore store;private LevelService levels;private CdrJobsAPI api;private MinerListener minerL;private FarmerListener farmerL;private HunterListener hunterL;private LumberjackListener lumberL;private FisherListener fisherL;
-@Override public void onEnable(){saveDefaultConfig();getConfig().options().copyDefaults(true);saveConfig();saveResource("messages.yml",false);loadMessages();ConfigValidator.validate(this);try{db=new Database(getDataFolder());db.connect();store=new ProfessionStore(getDataFolder());store.connect();store.setSchemaVersion(9);db.backfillFateMilestoneClaims(fateMilestones().keySet());}catch(Exception e){getLogger().log(Level.SEVERE,"Failed to initialize SQLite",e);getServer().getPluginManager().disablePlugin(this);return;}levels=new LevelService(this);ProgressionService prog=new ProgressionService(this,db,levels);api=new CdrJobsAPI(db,prog);MinerTrialService mt=new MinerTrialService(this,db);SkillService ms=new SkillService(this,db,mt);MinerAbilityService ma=new MinerAbilityService(this,db);FarmerService farmer=new FarmerService(this,db,store);HunterService hunter=new HunterService(this,db,store);LumberjackService lumber=new LumberjackService(this,db,store);FisherService fisher=new FisherService(this,db,store);JobsMenu menu=new JobsMenu(this,db,store,levels,mt,farmer,hunter,lumber,fisher);JobsCommand jobs=new JobsCommand(this,db,menu,levels,ma,farmer,hunter,lumber,fisher);AdminCommand admin=new AdminCommand(this,db,store,prog);registerCommand("cdrjobs",jobs,jobs);registerCommand("cdrjobsadmin",admin,admin);minerL=new MinerListener(this,db,prog,ms,levels,mt,ma);farmerL=new FarmerListener(this,db,store,prog,farmer,levels);hunterL=new HunterListener(this,prog,hunter,levels);lumberL=new LumberjackListener(this,store,prog,lumber,levels);fisherL=new FisherListener(this,prog,fisher,levels);for(var listener:List.of(minerL,farmerL,hunterL,lumberL,fisherL,new MenuListener(menu,ms,farmer,hunter,lumber,fisher)))getServer().getPluginManager().registerEvents(listener,this);if(getServer().getPluginManager().isPluginEnabled("PlaceholderAPI"))new CdrJobsExpansion(this,db,store,levels).register();getLogger().info("CdrJobs v"+getPluginMeta().getVersion()+" — ADVENTURER API enabled.");}
-@Override public void onDisable(){api=null;try{if(store!=null)store.close();}catch(SQLException e){getLogger().warning(e.getMessage());}try{if(db!=null)db.close();}catch(SQLException e){getLogger().warning(e.getMessage());}}
-public CdrJobsAPI getApi(){if(api==null)throw new IllegalStateException("CdrJobs API is not available before plugin enable or after disable");return api;}
-private void registerCommand(String n,org.bukkit.command.CommandExecutor e,org.bukkit.command.TabCompleter t){PluginCommand c=getCommand(n);if(c==null)throw new IllegalStateException("Missing command "+n);c.setExecutor(e);c.setTabCompleter(t);}private void loadMessages(){File f=new File(getDataFolder(),"messages.yml");messages=YamlConfiguration.loadConfiguration(f);try(var s=getResource("messages.yml")){if(s!=null){YamlConfiguration d=YamlConfiguration.loadConfiguration(new InputStreamReader(s,StandardCharsets.UTF_8));messages.setDefaults(d);messages.options().copyDefaults(true);messages.save(f);}}catch(Exception e){getLogger().log(Level.WARNING,"Could not merge messages",e);}}public void reloadPluginFiles(){reloadConfig();getConfig().options().copyDefaults(true);loadMessages();ConfigValidator.validate(this);if(minerL!=null)minerL.refreshXpMap();if(farmerL!=null)farmerL.refreshXpMap();if(hunterL!=null)hunterL.refreshXpMap();if(lumberL!=null)lumberL.refreshXpMap();if(fisherL!=null)fisherL.refreshXpMap();}public String prefix(){return messages.getString("prefix","&8[&bCdrJobs&8] &r");}public String message(String p){return messages.getString(p,p);}public Map<Integer,Integer> fateMilestones(){Map<Integer,Integer>r=new LinkedHashMap<>();ConfigurationSection s=getConfig().getConfigurationSection("fate-essence-milestones");if(s!=null)for(String k:s.getKeys(false))try{r.put(Integer.parseInt(k),s.getInt(k));}catch(Exception ignored){}return r;}public Map<Material,Integer> loadMinerXp(){return loadActivityXp("miner.xp");}public Map<Material,Integer> loadActivityXp(String p){Map<Material,Integer>m=new HashMap<>();ConfigurationSection s=getConfig().getConfigurationSection(p);if(s!=null)for(String k:s.getKeys(false)){Material mat=Material.matchMaterial(k);if(mat!=null)m.put(mat,s.getInt(k));}return m;}}
+
+import org.bukkit.Material;
+import org.bukkit.command.PluginCommand;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.plugin.java.JavaPlugin;
+import store.cadera.cdrjobs.api.CdrJobsAPI;
+import store.cadera.cdrjobs.command.AdminCommand;
+import store.cadera.cdrjobs.command.JobsCommand;
+import store.cadera.cdrjobs.data.Database;
+import store.cadera.cdrjobs.data.ProfessionStore;
+import store.cadera.cdrjobs.gui.JobsMenu;
+import store.cadera.cdrjobs.listener.FarmerListener;
+import store.cadera.cdrjobs.listener.FisherListener;
+import store.cadera.cdrjobs.listener.HunterListener;
+import store.cadera.cdrjobs.listener.LumberjackListener;
+import store.cadera.cdrjobs.listener.MenuListener;
+import store.cadera.cdrjobs.listener.MinerListener;
+import store.cadera.cdrjobs.placeholder.CdrJobsExpansion;
+import store.cadera.cdrjobs.service.FarmerService;
+import store.cadera.cdrjobs.service.FisherService;
+import store.cadera.cdrjobs.service.HunterService;
+import store.cadera.cdrjobs.service.LevelService;
+import store.cadera.cdrjobs.service.LumberjackService;
+import store.cadera.cdrjobs.service.MinerAbilityService;
+import store.cadera.cdrjobs.service.MinerTrialService;
+import store.cadera.cdrjobs.service.ProgressionService;
+import store.cadera.cdrjobs.service.SkillService;
+import store.cadera.cdrjobs.util.ConfigValidator;
+
+import java.io.File;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+
+public final class CdrJobsPlugin extends JavaPlugin {
+    private FileConfiguration messages;
+    private Database database;
+    private ProfessionStore professionStore;
+    private LevelService levelService;
+    private CdrJobsAPI api;
+    private MinerListener minerListener;
+    private FarmerListener farmerListener;
+    private HunterListener hunterListener;
+    private LumberjackListener lumberjackListener;
+    private FisherListener fisherListener;
+
+    @Override
+    public void onEnable() {
+        saveDefaultConfig();
+        getConfig().options().copyDefaults(true);
+        saveConfig();
+        saveResource("messages.yml", false);
+        loadMessages();
+        ConfigValidator.validate(this);
+
+        try {
+            database = new Database(getDataFolder());
+            database.connect();
+            professionStore = new ProfessionStore(getDataFolder());
+            professionStore.connect();
+            professionStore.setSchemaVersion(9);
+            database.backfillFateMilestoneClaims(fateMilestones().keySet());
+        } catch (Exception exception) {
+            getLogger().log(Level.SEVERE, "Failed to initialize SQLite", exception);
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+
+        levelService = new LevelService(this);
+        ProgressionService progression = new ProgressionService(this, database, levelService);
+        api = new CdrJobsAPI(database, progression);
+
+        MinerTrialService minerTrials = new MinerTrialService(this, database);
+        SkillService minerSkills = new SkillService(this, database, minerTrials);
+        MinerAbilityService minerAbility = new MinerAbilityService(this, database);
+        FarmerService farmer = new FarmerService(this, database, professionStore);
+        HunterService hunter = new HunterService(this, database, professionStore);
+        LumberjackService lumberjack = new LumberjackService(this, database, professionStore);
+        FisherService fisher = new FisherService(this, database, professionStore);
+
+        JobsMenu menu = new JobsMenu(this, database, professionStore, levelService, minerTrials, farmer, hunter, lumberjack, fisher);
+        JobsCommand jobsCommand = new JobsCommand(this, database, menu, levelService, minerAbility, farmer, hunter, lumberjack, fisher);
+        AdminCommand adminCommand = new AdminCommand(this, database, professionStore, progression);
+        registerCommand("cdrjobs", jobsCommand, jobsCommand);
+        registerCommand("cdrjobsadmin", adminCommand, adminCommand);
+
+        minerListener = new MinerListener(this, database, progression, minerSkills, levelService, minerTrials, minerAbility);
+        farmerListener = new FarmerListener(this, database, professionStore, progression, farmer, levelService);
+        hunterListener = new HunterListener(this, progression, hunter, levelService);
+        lumberjackListener = new LumberjackListener(this, professionStore, progression, lumberjack, levelService);
+        fisherListener = new FisherListener(this, progression, fisher, levelService);
+
+        for (var listener : List.of(
+                minerListener,
+                farmerListener,
+                hunterListener,
+                lumberjackListener,
+                fisherListener,
+                new MenuListener(menu, minerSkills, farmer, hunter, lumberjack, fisher))) {
+            getServer().getPluginManager().registerEvents(listener, this);
+        }
+
+        if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+            new CdrJobsExpansion(this, database, professionStore, levelService).register();
+        }
+
+        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — STABILITY PATCH enabled.");
+    }
+
+    @Override
+    public void onDisable() {
+        api = null;
+        try {
+            if (professionStore != null) professionStore.close();
+        } catch (SQLException exception) {
+            getLogger().warning(exception.getMessage());
+        }
+        try {
+            if (database != null) database.close();
+        } catch (SQLException exception) {
+            getLogger().warning(exception.getMessage());
+        }
+    }
+
+    public CdrJobsAPI getApi() {
+        if (api == null) throw new IllegalStateException("CdrJobs API is not available before plugin enable or after disable");
+        return api;
+    }
+
+    private void registerCommand(String name, org.bukkit.command.CommandExecutor executor, org.bukkit.command.TabCompleter completer) {
+        PluginCommand command = getCommand(name);
+        if (command == null) throw new IllegalStateException("Missing command " + name);
+        command.setExecutor(executor);
+        command.setTabCompleter(completer);
+    }
+
+    private void loadMessages() {
+        File file = new File(getDataFolder(), "messages.yml");
+        messages = YamlConfiguration.loadConfiguration(file);
+        try (var stream = getResource("messages.yml")) {
+            if (stream != null) {
+                YamlConfiguration defaults = YamlConfiguration.loadConfiguration(new InputStreamReader(stream, StandardCharsets.UTF_8));
+                messages.setDefaults(defaults);
+                messages.options().copyDefaults(true);
+                messages.save(file);
+            }
+        } catch (Exception exception) {
+            getLogger().log(Level.WARNING, "Could not merge messages", exception);
+        }
+    }
+
+    public void reloadPluginFiles() {
+        reloadConfig();
+        getConfig().options().copyDefaults(true);
+        saveConfig();
+        loadMessages();
+        ConfigValidator.validate(this);
+        if (minerListener != null) minerListener.refreshXpMap();
+        if (farmerListener != null) farmerListener.refreshXpMap();
+        if (hunterListener != null) hunterListener.refreshXpMap();
+        if (lumberjackListener != null) lumberjackListener.refreshXpMap();
+        if (fisherListener != null) fisherListener.refreshXpMap();
+    }
+
+    public String prefix() {
+        return messages.getString("prefix", "&8[&bCdrJobs&8] &r");
+    }
+
+    public String message(String path) {
+        return messages.getString(path, path);
+    }
+
+    public Map<Integer, Integer> fateMilestones() {
+        Map<Integer, Integer> result = new LinkedHashMap<>();
+        ConfigurationSection section = getConfig().getConfigurationSection("fate-essence-milestones");
+        if (section != null) {
+            for (String key : section.getKeys(false)) {
+                try {
+                    result.put(Integer.parseInt(key), section.getInt(key));
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        }
+        return result;
+    }
+
+    public Map<Material, Integer> loadMinerXp() {
+        return loadActivityXp("miner.xp");
+    }
+
+    public Map<Material, Integer> loadActivityXp(String path) {
+        Map<Material, Integer> result = new HashMap<>();
+        ConfigurationSection section = getConfig().getConfigurationSection(path);
+        if (section != null) {
+            for (String key : section.getKeys(false)) {
+                Material material = Material.matchMaterial(key);
+                if (material != null) result.put(material, section.getInt(key));
+            }
+        }
+        return result;
+    }
+}
