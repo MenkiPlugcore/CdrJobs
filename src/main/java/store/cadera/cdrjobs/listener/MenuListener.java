@@ -7,11 +7,21 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
+import store.cadera.cdrjobs.CdrJobsPlugin;
+import store.cadera.cdrjobs.api.event.ProfessionAwakeningEvent;
+import store.cadera.cdrjobs.api.event.SkillUpgradeEvent;
+import store.cadera.cdrjobs.data.Database;
+import store.cadera.cdrjobs.data.ProfessionStore;
 import store.cadera.cdrjobs.gui.JobsMenu;
 import store.cadera.cdrjobs.model.*;
 import store.cadera.cdrjobs.service.*;
 
+import java.util.logging.Level;
+
 public final class MenuListener implements Listener {
+    private final CdrJobsPlugin plugin;
+    private final Database database;
+    private final ProfessionStore store;
     private final JobsMenu menu;
     private final SkillService miner;
     private final FarmerService farmer;
@@ -19,8 +29,12 @@ public final class MenuListener implements Listener {
     private final LumberjackService lumber;
     private final FisherService fisher;
 
-    public MenuListener(JobsMenu menu, SkillService miner, FarmerService farmer, HunterService hunter,
+    public MenuListener(CdrJobsPlugin plugin, Database database, ProfessionStore store,
+                        JobsMenu menu, SkillService miner, FarmerService farmer, HunterService hunter,
                         LumberjackService lumber, FisherService fisher) {
+        this.plugin = plugin;
+        this.database = database;
+        this.store = store;
         this.menu = menu;
         this.miner = miner;
         this.farmer = farmer;
@@ -55,13 +69,59 @@ public final class MenuListener implements Listener {
                 case "open_fisher", "back_fisher" -> menu.openFisher(player);
                 case "open_fisher_trials" -> menu.openFisherTrials(player);
                 case "back_main" -> menu.openMain(player);
-                case "upgrade_miner_skill" -> { miner.tryUpgrade(player, MinerSkill.valueOf(id)); menu.openMiner(player); }
-                case "upgrade_farmer_skill" -> { farmer.tryUpgrade(player, FarmerSkill.valueOf(id)); menu.openFarmer(player); }
-                case "upgrade_hunter_skill" -> { hunter.tryUpgrade(player, HunterSkill.valueOf(id)); menu.openHunter(player); }
-                case "upgrade_lumber_skill" -> { lumber.tryUpgrade(player, LumberjackSkill.valueOf(id)); menu.openLumber(player); }
-                case "upgrade_fisher_skill" -> { fisher.tryUpgrade(player, FisherSkill.valueOf(id)); menu.openFisher(player); }
+                case "upgrade_miner_skill" -> {
+                    MinerSkill skill = MinerSkill.valueOf(id);
+                    if (miner.tryUpgrade(player, skill)) {
+                        int rank = database.getSkillRank(player.getUniqueId(), skill);
+                        emitSkillUpgrade(player, JobType.MINER, skill.name(), rank, skill.essenceCost(), skill == MinerSkill.HEART_OF_MOUNTAIN);
+                    }
+                    menu.openMiner(player);
+                }
+                case "upgrade_farmer_skill" -> {
+                    FarmerSkill skill = FarmerSkill.valueOf(id);
+                    if (farmer.tryUpgrade(player, skill)) {
+                        int rank = store.getSkillRank(player.getUniqueId(), skill.key());
+                        emitSkillUpgrade(player, JobType.FARMER, skill.key(), rank, skill.essenceCost(), skill == FarmerSkill.VERDANT_DOMINION);
+                    }
+                    menu.openFarmer(player);
+                }
+                case "upgrade_hunter_skill" -> {
+                    HunterSkill skill = HunterSkill.valueOf(id);
+                    if (hunter.tryUpgrade(player, skill)) {
+                        int rank = store.getSkillRank(player.getUniqueId(), skill.key());
+                        emitSkillUpgrade(player, JobType.HUNTER, skill.key(), rank, skill.essenceCost(), skill == HunterSkill.APEX_PREDATOR);
+                    }
+                    menu.openHunter(player);
+                }
+                case "upgrade_lumber_skill" -> {
+                    LumberjackSkill skill = LumberjackSkill.valueOf(id);
+                    if (lumber.tryUpgrade(player, skill)) {
+                        int rank = store.getSkillRank(player.getUniqueId(), skill.key());
+                        emitSkillUpgrade(player, JobType.LUMBERJACK, skill.key(), rank, skill.essenceCost(), skill == LumberjackSkill.OATH_YGGDRASIL);
+                    }
+                    menu.openLumber(player);
+                }
+                case "upgrade_fisher_skill" -> {
+                    FisherSkill skill = FisherSkill.valueOf(id);
+                    if (fisher.tryUpgrade(player, skill)) {
+                        int rank = store.getSkillRank(player.getUniqueId(), skill.key());
+                        emitSkillUpgrade(player, JobType.FISHER, skill.key(), rank, skill.essenceCost(), skill == FisherSkill.KING_OF_TIDES);
+                    }
+                    menu.openFisher(player);
+                }
             }
-        } catch (Exception ignored) {
+        } catch (Exception exception) {
+            plugin.getLogger().log(Level.WARNING,
+                    "GUI action failed for player=" + player.getName() + " action=" + action + " id=" + id,
+                    exception);
+            player.sendMessage("§cCdrJobs tidak dapat memproses menu ini. Error sudah dicatat di console.");
+        }
+    }
+
+    private void emitSkillUpgrade(Player player, JobType job, String skillId, int rank, int cost, boolean awakening) {
+        plugin.getServer().getPluginManager().callEvent(new SkillUpgradeEvent(player, job, skillId, rank, cost));
+        if (awakening && rank > 0) {
+            plugin.getServer().getPluginManager().callEvent(new ProfessionAwakeningEvent(player, job, skillId));
         }
     }
 
