@@ -2,6 +2,7 @@ package store.cadera.cdrjobs.service;
 
 import org.bukkit.entity.Player;
 import store.cadera.cdrjobs.CdrJobsPlugin;
+import store.cadera.cdrjobs.api.event.RebirthEvent;
 import store.cadera.cdrjobs.data.Database;
 import store.cadera.cdrjobs.data.RebirthStore;
 import store.cadera.cdrjobs.integration.VaultEconomyHook;
@@ -98,6 +99,8 @@ public final class RebirthService {
             }
 
             profiles.invalidate(player.getUniqueId());
+            plugin.getServer().getPluginManager().callEvent(new RebirthEvent(
+                    player, job, result.refund(), result.investedNodes(), result.investedRanks(), bypass));
             return new Outcome(Status.SUCCESS, result.refund(), result.investedNodes(), result.investedRanks(),
                     result.readyAt() <= 0L ? 0L : Math.max(0L, (result.readyAt() - System.currentTimeMillis() + 999L) / 1000L));
         } catch (RuntimeException e) {
