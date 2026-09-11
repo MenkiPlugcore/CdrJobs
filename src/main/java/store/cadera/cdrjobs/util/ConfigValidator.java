@@ -65,5 +65,16 @@ public final class ConfigValidator {
         if (farmerCooldown < 0L) plugin.getLogger().warning("Farmer location cooldown cannot be negative.");
         long fisherAfk = plugin.getConfig().getLong("fisher.anti-exploit.afk-after-seconds", 600L);
         if (fisherAfk < 60L) plugin.getLogger().warning("Fisher AFK threshold below 60s may cause false positives.");
+
+        long rebirthCooldown = plugin.getConfig().getLong("rite-of-rebirth.cooldown-seconds", 604800L);
+        if (rebirthCooldown < 0L) plugin.getLogger().warning("rite-of-rebirth.cooldown-seconds cannot be negative.");
+        int refundPercent = plugin.getConfig().getInt("rite-of-rebirth.refund-percent", 100);
+        if (refundPercent < 0 || refundPercent > 100) plugin.getLogger().warning("rite-of-rebirth.refund-percent must be 0-100; runtime clamps it.");
+        String feeMode = plugin.getConfig().getString("rite-of-rebirth.fee.mode", "NONE").toUpperCase(Locale.ROOT);
+        if (!feeMode.equals("NONE") && !feeMode.equals("FATE") && !feeMode.equals("VAULT")) {
+            plugin.getLogger().warning("rite-of-rebirth.fee.mode must be NONE, FATE or VAULT.");
+        }
+        if (plugin.getConfig().getInt("rite-of-rebirth.fee.fate-essence", 0) < 0) plugin.getLogger().warning("Rebirth Fate fee cannot be negative.");
+        if (plugin.getConfig().getDouble("rite-of-rebirth.fee.vault", 0D) < 0D) plugin.getLogger().warning("Rebirth Vault fee cannot be negative.");
     }
 }
