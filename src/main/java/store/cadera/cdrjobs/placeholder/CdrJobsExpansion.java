@@ -11,6 +11,7 @@ import store.cadera.cdrjobs.model.JobProgress;
 import store.cadera.cdrjobs.model.JobType;
 import store.cadera.cdrjobs.model.MinerTrialProgress;
 import store.cadera.cdrjobs.service.LevelService;
+import store.cadera.cdrjobs.service.MasteryService;
 import store.cadera.cdrjobs.service.ProfileService;
 import store.cadera.cdrjobs.util.JobRanks;
 
@@ -20,14 +21,16 @@ public final class CdrJobsExpansion extends PlaceholderExpansion {
     private final ProfessionStore store;
     private final LevelService levels;
     private final ProfileService profiles;
+    private final MasteryService mastery;
 
     public CdrJobsExpansion(CdrJobsPlugin plugin, Database db, ProfessionStore store,
-                            LevelService levels, ProfileService profiles) {
+                            LevelService levels, ProfileService profiles, MasteryService mastery) {
         this.plugin = plugin;
         this.db = db;
         this.store = store;
         this.levels = levels;
         this.profiles = profiles;
+        this.mastery = mastery;
     }
 
     @Override public @NotNull String getIdentifier() { return "cdrjobs"; }
@@ -63,6 +66,8 @@ public final class CdrJobsExpansion extends PlaceholderExpansion {
                 case "skills_unlocked" -> String.valueOf(snapshot.unlockedSkills());
                 case "awakened_count" -> String.valueOf(snapshot.awakenedJobs().size());
                 case "awakened_paths" -> snapshot.awakenedNames();
+                case "mastery_tiers" -> String.valueOf(mastery.totalMasteryTiers(player.getUniqueId()));
+                case "mastery_xp" -> String.valueOf(mastery.totalMasteryXp(player.getUniqueId()));
                 default -> null;
             };
         }
@@ -72,12 +77,21 @@ public final class CdrJobsExpansion extends PlaceholderExpansion {
             if (query.startsWith(prefix)) {
                 JobProgress progress = db.getProgress(player.getUniqueId(), job);
                 String tail = query.substring(prefix.length());
+                MasteryService.State state = mastery.state(player.getUniqueId(), job);
                 return switch (tail) {
                     case "level" -> String.valueOf(progress.level());
                     case "xp" -> String.valueOf(progress.xp());
                     case "xp_required" -> progress.level() >= levels.maxLevel()
                             ? "0" : String.valueOf(levels.xpRequiredForNextLevel(progress.level()));
                     case "rank" -> JobRanks.title(job, progress.level());
+                    case "mastery_tier" -> String.valueOf(state.tier());
+                    case "mastery_roman" -> mastery.roman(state.tier());
+                    case "mastery_xp" -> String.valueOf(state.xp());
+                    case "mastery_xp_required" -> String.valueOf(state.requiredXp());
+                    case "mastery_total_xp" -> String.valueOf(state.totalXp());
+                    case "mastery_title" -> state.title();
+                    case "mastery_badge" -> state.badge();
+                    case "mastery_display" -> mastery.display(job, state);
                     default -> metric(player, job, tail);
                 };
             }
