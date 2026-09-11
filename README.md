@@ -2,45 +2,34 @@
 
 **Choose Your Path, Shape Your Fate.**
 
-Fantasy profession progression for Paper. Current chapter: `v0.3.0 — Blood Moon`.
+Current development version: `v0.4.0 — Oath of the Ancient Grove`.
 
-## Released professions
+## Released
 - ⛏ Runebound Delver — Miner
 - 🌿 Verdant Keeper — Farmer
 - ⚔ Bloodfang Stalker — Hunter
-
-Planned before production:
 - 🪓 Ironbark Warden — Lumberjack
-- 🎣 Tidebound Angler — Fisher
 
-## Shared systems
+Next: 🎣 Tidebound Angler — Fisher, then production hardening/API.
+
+## Core systems
 - Lv.1–100 per profession
 - Global scarce Fate Essence
-- Branching Path of Ascension
-- Profession Trials
+- Branching fantasy skill trees
+- Trials + awakened endgame skills
 - Active abilities with persistent cooldowns
-- SQLite persistence and non-destructive migrations
+- SQLite persistence
+- Profession-specific anti-exploit systems
 - PlaceholderAPI
-- Configurable XP curve and per-profession tuning
-- Admin testing commands
+- Admin test commands
 
 ## Commands
-- `/cdrjobs`
-- `/cdrjobs stats [player]`
-- `/cdrjobs <miner|farmer|hunter>`
-- `/cdrjobs trials <job>`
-- `/cdrjobs ability <job>`
-- `/cdrjobsadmin addxp <player> [job] <amount>`
-- `/cdrjobsadmin setlevel <player> [job] <level>`
-- `/cdrjobsadmin reset <player>`
-- `/cdrjobsadmin reload`
+`/cdrjobs`, `/cdrjobs stats`, `/cdrjobs <job>`, `/cdrjobs trials <job>`, `/cdrjobs ability <job>`
+
+Admin: `/cdrjobsadmin addxp <player> [job] <amount>`, `/cdrjobsadmin setlevel <player> [job] <level>`, `/cdrjobsadmin reset <player>`, `/cdrjobsadmin reload`.
 
 ## Build
-Java 21 + Maven:
+Java 21 / Paper 1.21.4 API.
 ```bash
 mvn clean package
 ```
-Output: `target/CdrJobs-0.3.0.jar`
-
-## Documentation
-Every update is recorded in `CHANGELOG.md` and `docs/updates/`.

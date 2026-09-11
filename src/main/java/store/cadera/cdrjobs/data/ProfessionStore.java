@@ -1,162 +1,25 @@
 package store.cadera.cdrjobs.data;
 
 import org.bukkit.Location;
-
 import java.io.File;
 import java.sql.*;
 import java.util.UUID;
 
 public final class ProfessionStore implements AutoCloseable {
-    private final String url;
-    private Connection connection;
-
-    public ProfessionStore(File dataFolder) {
-        this.url = "jdbc:sqlite:" + new File(dataFolder, "cdrjobs.db").getAbsolutePath();
-    }
-
-    public void connect() throws SQLException {
-        connection = DriverManager.getConnection(url);
-        try (Statement st = connection.createStatement()) {
-            st.execute("PRAGMA journal_mode=WAL");
-            st.execute("PRAGMA synchronous=NORMAL");
-            st.execute("CREATE TABLE IF NOT EXISTS profession_counters (uuid TEXT NOT NULL, job TEXT NOT NULL, metric TEXT NOT NULL, value INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(uuid,job,metric))");
-            st.execute("CREATE TABLE IF NOT EXISTS profession_flags (uuid TEXT NOT NULL, job TEXT NOT NULL, flag TEXT NOT NULL, value INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(uuid,job,flag))");
-            st.execute("CREATE TABLE IF NOT EXISTS reward_locations (activity TEXT NOT NULL, world TEXT NOT NULL, x INTEGER NOT NULL, y INTEGER NOT NULL, z INTEGER NOT NULL, ready_at INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(activity,world,x,y,z))");
-        }
-    }
-
-    public synchronized int getSkillRank(UUID uuid, String skillKey) {
-        try (PreparedStatement ps = connection.prepareStatement("SELECT rank FROM player_skills WHERE uuid=? AND skill=?")) {
-            ps.setString(1, uuid.toString());
-            ps.setString(2, skillKey);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? rs.getInt(1) : 0;
-            }
-        } catch (SQLException e) {
-            throw new IllegalStateException("Failed to read profession skill", e);
-        }
-    }
-
-    public synchronized void setSkillRank(UUID uuid, String skillKey, int rank) {
-        try (PreparedStatement ps = connection.prepareStatement("INSERT INTO player_skills(uuid,skill,rank) VALUES(?,?,?) ON CONFLICT(uuid,skill) DO UPDATE SET rank=excluded.rank")) {
-            ps.setString(1, uuid.toString());
-            ps.setString(2, skillKey);
-            ps.setInt(3, rank);
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            throw new IllegalStateException("Failed to save profession skill", e);
-        }
-    }
-
-    public synchronized long incrementCounter(UUID uuid, String job, String metric, long amount) {
-        try (PreparedStatement ps = connection.prepareStatement("INSERT INTO profession_counters(uuid,job,metric,value) VALUES(?,?,?,?) ON CONFLICT(uuid,job,metric) DO UPDATE SET value=value+excluded.value")) {
-            ps.setString(1, uuid.toString());
-            ps.setString(2, job);
-            ps.setString(3, metric);
-            ps.setLong(4, amount);
-            ps.executeUpdate();
-            return getCounter(uuid, job, metric);
-        } catch (SQLException e) {
-            throw new IllegalStateException("Failed to increment profession counter", e);
-        }
-    }
-
-    public synchronized long getCounter(UUID uuid, String job, String metric) {
-        try (PreparedStatement ps = connection.prepareStatement("SELECT value FROM profession_counters WHERE uuid=? AND job=? AND metric=?")) {
-            ps.setString(1, uuid.toString());
-            ps.setString(2, job);
-            ps.setString(3, metric);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? rs.getLong(1) : 0L;
-            }
-        } catch (SQLException e) {
-            throw new IllegalStateException("Failed to read profession counter", e);
-        }
-    }
-
-    public synchronized boolean getFlag(UUID uuid, String job, String flag) {
-        try (PreparedStatement ps = connection.prepareStatement("SELECT value FROM profession_flags WHERE uuid=? AND job=? AND flag=?")) {
-            ps.setString(1, uuid.toString());
-            ps.setString(2, job);
-            ps.setString(3, flag);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() && rs.getInt(1) != 0;
-            }
-        } catch (SQLException e) {
-            throw new IllegalStateException("Failed to read profession flag", e);
-        }
-    }
-
-    public synchronized void setFlag(UUID uuid, String job, String flag, boolean value) {
-        try (PreparedStatement ps = connection.prepareStatement("INSERT INTO profession_flags(uuid,job,flag,value) VALUES(?,?,?,?) ON CONFLICT(uuid,job,flag) DO UPDATE SET value=excluded.value")) {
-            ps.setString(1, uuid.toString());
-            ps.setString(2, job);
-            ps.setString(3, flag);
-            ps.setInt(4, value ? 1 : 0);
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            throw new IllegalStateException("Failed to save profession flag", e);
-        }
-    }
-
-    public synchronized long getAbilityReadyAt(UUID uuid, String ability) {
-        try (PreparedStatement ps = connection.prepareStatement("SELECT ready_at FROM ability_cooldowns WHERE uuid=? AND ability=?")) {
-            ps.setString(1, uuid.toString());
-            ps.setString(2, ability);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? rs.getLong(1) : 0L;
-            }
-        } catch (SQLException e) {
-            throw new IllegalStateException("Failed to read ability cooldown", e);
-        }
-    }
-
-    public synchronized void setAbilityReadyAt(UUID uuid, String ability, long readyAt) {
-        try (PreparedStatement ps = connection.prepareStatement("INSERT INTO ability_cooldowns(uuid,ability,ready_at) VALUES(?,?,?) ON CONFLICT(uuid,ability) DO UPDATE SET ready_at=excluded.ready_at")) {
-            ps.setString(1, uuid.toString());
-            ps.setString(2, ability);
-            ps.setLong(3, readyAt);
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            throw new IllegalStateException("Failed to save ability cooldown", e);
-        }
-    }
-
-    public synchronized boolean tryClaimLocation(Location loc, String activity, long cooldownMillis) {
-        long now = System.currentTimeMillis();
-        String world = loc.getWorld().getUID().toString();
-        try {
-            try (PreparedStatement read = connection.prepareStatement("SELECT ready_at FROM reward_locations WHERE activity=? AND world=? AND x=? AND y=? AND z=?")) {
-                read.setString(1, activity); read.setString(2, world);
-                read.setInt(3, loc.getBlockX()); read.setInt(4, loc.getBlockY()); read.setInt(5, loc.getBlockZ());
-                try (ResultSet rs = read.executeQuery()) {
-                    if (rs.next() && rs.getLong(1) > now) return false;
-                }
-            }
-            try (PreparedStatement write = connection.prepareStatement("INSERT INTO reward_locations(activity,world,x,y,z,ready_at) VALUES(?,?,?,?,?,?) ON CONFLICT(activity,world,x,y,z) DO UPDATE SET ready_at=excluded.ready_at")) {
-                write.setString(1, activity); write.setString(2, world);
-                write.setInt(3, loc.getBlockX()); write.setInt(4, loc.getBlockY()); write.setInt(5, loc.getBlockZ());
-                write.setLong(6, now + Math.max(0L, cooldownMillis));
-                write.executeUpdate();
-            }
-            return true;
-        } catch (SQLException e) {
-            throw new IllegalStateException("Failed to claim activity location", e);
-        }
-    }
-
-    public synchronized void resetPlayer(UUID uuid) {
-        try (PreparedStatement a = connection.prepareStatement("DELETE FROM profession_counters WHERE uuid=?");
-             PreparedStatement b = connection.prepareStatement("DELETE FROM profession_flags WHERE uuid=?")) {
-            a.setString(1, uuid.toString()); a.executeUpdate();
-            b.setString(1, uuid.toString()); b.executeUpdate();
-        } catch (SQLException e) {
-            throw new IllegalStateException("Failed to reset profession extension data", e);
-        }
-    }
-
-    @Override
-    public void close() throws SQLException {
-        if (connection != null && !connection.isClosed()) connection.close();
-    }
+    private final String url; private Connection connection;
+    public ProfessionStore(File dataFolder){url="jdbc:sqlite:"+new File(dataFolder,"cdrjobs.db").getAbsolutePath();}
+    public void connect() throws SQLException{connection=DriverManager.getConnection(url);try(Statement st=connection.createStatement()){st.execute("PRAGMA journal_mode=WAL");st.execute("PRAGMA synchronous=NORMAL");st.execute("CREATE TABLE IF NOT EXISTS profession_counters (uuid TEXT NOT NULL, job TEXT NOT NULL, metric TEXT NOT NULL, value INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(uuid,job,metric))");st.execute("CREATE TABLE IF NOT EXISTS profession_flags (uuid TEXT NOT NULL, job TEXT NOT NULL, flag TEXT NOT NULL, value INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(uuid,job,flag))");st.execute("CREATE TABLE IF NOT EXISTS reward_locations (activity TEXT NOT NULL, world TEXT NOT NULL, x INTEGER NOT NULL, y INTEGER NOT NULL, z INTEGER NOT NULL, ready_at INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(activity,world,x,y,z))");st.execute("CREATE TABLE IF NOT EXISTS placed_job_blocks (job TEXT NOT NULL, world TEXT NOT NULL, x INTEGER NOT NULL, y INTEGER NOT NULL, z INTEGER NOT NULL, PRIMARY KEY(job,world,x,y,z))");}}
+    public synchronized int getSkillRank(UUID u,String k){try(PreparedStatement ps=connection.prepareStatement("SELECT rank FROM player_skills WHERE uuid=? AND skill=?")){ps.setString(1,u.toString());ps.setString(2,k);try(ResultSet rs=ps.executeQuery()){return rs.next()?rs.getInt(1):0;}}catch(SQLException e){throw new IllegalStateException("Failed to read profession skill",e);}}
+    public synchronized void setSkillRank(UUID u,String k,int r){try(PreparedStatement ps=connection.prepareStatement("INSERT INTO player_skills(uuid,skill,rank) VALUES(?,?,?) ON CONFLICT(uuid,skill) DO UPDATE SET rank=excluded.rank")){ps.setString(1,u.toString());ps.setString(2,k);ps.setInt(3,r);ps.executeUpdate();}catch(SQLException e){throw new IllegalStateException("Failed to save profession skill",e);}}
+    public synchronized long incrementCounter(UUID u,String j,String m,long a){try(PreparedStatement ps=connection.prepareStatement("INSERT INTO profession_counters(uuid,job,metric,value) VALUES(?,?,?,?) ON CONFLICT(uuid,job,metric) DO UPDATE SET value=value+excluded.value")){ps.setString(1,u.toString());ps.setString(2,j);ps.setString(3,m);ps.setLong(4,a);ps.executeUpdate();return getCounter(u,j,m);}catch(SQLException e){throw new IllegalStateException("Failed to increment profession counter",e);}}
+    public synchronized long getCounter(UUID u,String j,String m){try(PreparedStatement ps=connection.prepareStatement("SELECT value FROM profession_counters WHERE uuid=? AND job=? AND metric=?")){ps.setString(1,u.toString());ps.setString(2,j);ps.setString(3,m);try(ResultSet rs=ps.executeQuery()){return rs.next()?rs.getLong(1):0L;}}catch(SQLException e){throw new IllegalStateException("Failed to read profession counter",e);}}
+    public synchronized boolean getFlag(UUID u,String j,String f){try(PreparedStatement ps=connection.prepareStatement("SELECT value FROM profession_flags WHERE uuid=? AND job=? AND flag=?")){ps.setString(1,u.toString());ps.setString(2,j);ps.setString(3,f);try(ResultSet rs=ps.executeQuery()){return rs.next()&&rs.getInt(1)!=0;}}catch(SQLException e){throw new IllegalStateException("Failed to read profession flag",e);}}
+    public synchronized void setFlag(UUID u,String j,String f,boolean v){try(PreparedStatement ps=connection.prepareStatement("INSERT INTO profession_flags(uuid,job,flag,value) VALUES(?,?,?,?) ON CONFLICT(uuid,job,flag) DO UPDATE SET value=excluded.value")){ps.setString(1,u.toString());ps.setString(2,j);ps.setString(3,f);ps.setInt(4,v?1:0);ps.executeUpdate();}catch(SQLException e){throw new IllegalStateException("Failed to save profession flag",e);}}
+    public synchronized long getAbilityReadyAt(UUID u,String a){try(PreparedStatement ps=connection.prepareStatement("SELECT ready_at FROM ability_cooldowns WHERE uuid=? AND ability=?")){ps.setString(1,u.toString());ps.setString(2,a);try(ResultSet rs=ps.executeQuery()){return rs.next()?rs.getLong(1):0L;}}catch(SQLException e){throw new IllegalStateException("Failed to read ability cooldown",e);}}
+    public synchronized void setAbilityReadyAt(UUID u,String a,long r){try(PreparedStatement ps=connection.prepareStatement("INSERT INTO ability_cooldowns(uuid,ability,ready_at) VALUES(?,?,?) ON CONFLICT(uuid,ability) DO UPDATE SET ready_at=excluded.ready_at")){ps.setString(1,u.toString());ps.setString(2,a);ps.setLong(3,r);ps.executeUpdate();}catch(SQLException e){throw new IllegalStateException("Failed to save ability cooldown",e);}}
+    public synchronized boolean tryClaimLocation(Location l,String a,long cd){long now=System.currentTimeMillis();String w=l.getWorld().getUID().toString();try{try(PreparedStatement r=connection.prepareStatement("SELECT ready_at FROM reward_locations WHERE activity=? AND world=? AND x=? AND y=? AND z=?")){r.setString(1,a);r.setString(2,w);r.setInt(3,l.getBlockX());r.setInt(4,l.getBlockY());r.setInt(5,l.getBlockZ());try(ResultSet rs=r.executeQuery()){if(rs.next()&&rs.getLong(1)>now)return false;}}try(PreparedStatement p=connection.prepareStatement("INSERT INTO reward_locations(activity,world,x,y,z,ready_at) VALUES(?,?,?,?,?,?) ON CONFLICT(activity,world,x,y,z) DO UPDATE SET ready_at=excluded.ready_at")){p.setString(1,a);p.setString(2,w);p.setInt(3,l.getBlockX());p.setInt(4,l.getBlockY());p.setInt(5,l.getBlockZ());p.setLong(6,now+Math.max(0,cd));p.executeUpdate();}return true;}catch(SQLException e){throw new IllegalStateException("Failed to claim activity location",e);}}
+    public synchronized void markPlacedJobBlock(Location l,String job){try(PreparedStatement ps=connection.prepareStatement("INSERT OR IGNORE INTO placed_job_blocks(job,world,x,y,z) VALUES(?,?,?,?,?)")){ps.setString(1,job);ps.setString(2,l.getWorld().getUID().toString());ps.setInt(3,l.getBlockX());ps.setInt(4,l.getBlockY());ps.setInt(5,l.getBlockZ());ps.executeUpdate();}catch(SQLException e){throw new IllegalStateException("Failed to mark placed job block",e);}}
+    public synchronized boolean consumePlacedJobBlock(Location l,String job){try(PreparedStatement ps=connection.prepareStatement("DELETE FROM placed_job_blocks WHERE job=? AND world=? AND x=? AND y=? AND z=?")){ps.setString(1,job);ps.setString(2,l.getWorld().getUID().toString());ps.setInt(3,l.getBlockX());ps.setInt(4,l.getBlockY());ps.setInt(5,l.getBlockZ());return ps.executeUpdate()>0;}catch(SQLException e){throw new IllegalStateException("Failed to consume placed job block",e);}}
+    public synchronized void resetPlayer(UUID u){try(PreparedStatement a=connection.prepareStatement("DELETE FROM profession_counters WHERE uuid=?");PreparedStatement b=connection.prepareStatement("DELETE FROM profession_flags WHERE uuid=?")){a.setString(1,u.toString());a.executeUpdate();b.setString(1,u.toString());b.executeUpdate();}catch(SQLException e){throw new IllegalStateException("Failed to reset profession extension data",e);}}
+    @Override public void close() throws SQLException{if(connection!=null&&!connection.isClosed())connection.close();}
 }

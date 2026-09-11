@@ -1,13 +1,12 @@
 name: CdrJobs
-version: '0.3.0'
+version: '0.4.0'
 main: store.cadera.cdrjobs.CdrJobsPlugin
 api-version: '1.21'
 author: CADERA
-description: Fantasy profession progression system by CADERA.
 softdepend: [PlaceholderAPI]
 commands:
-  cdrjobs: { aliases: [jobs, cjobs], description: Open CdrJobs, usage: /cdrjobs }
-  cdrjobsadmin: { aliases: [cjobsadmin], description: CdrJobs administration, permission: cdrjobs.admin }
+  cdrjobs: { aliases: [jobs, cjobs], usage: /cdrjobs }
+  cdrjobsadmin: { aliases: [cjobsadmin], permission: cdrjobs.admin }
 permissions:
   cdrjobs.use: { default: true }
   cdrjobs.admin: { default: op }

@@ -1,5 +1,4 @@
-# CdrJobs v0.3.0 — BLOOD MOON
-# MENKIESTES SOFTWARE / CADERA
+# CdrJobs v0.4.0 — OATH OF THE ANCIENT GROVE
 settings:
   max-level: 100
   actionbar-xp: true
@@ -11,49 +10,37 @@ miner:
   enabled: true
   xp-multiplier: 1.0
   xp: { COAL_ORE: 4, DEEPSLATE_COAL_ORE: 5, COPPER_ORE: 4, DEEPSLATE_COPPER_ORE: 5, IRON_ORE: 6, DEEPSLATE_IRON_ORE: 7, GOLD_ORE: 8, DEEPSLATE_GOLD_ORE: 9, REDSTONE_ORE: 5, DEEPSLATE_REDSTONE_ORE: 6, LAPIS_ORE: 7, DEEPSLATE_LAPIS_ORE: 8, DIAMOND_ORE: 20, DEEPSLATE_DIAMOND_ORE: 22, EMERALD_ORE: 25, DEEPSLATE_EMERALD_ORE: 28, NETHER_GOLD_ORE: 6, NETHER_QUARTZ_ORE: 5, ANCIENT_DEBRIS: 35 }
-  trials:
-    trial-of-stone: { total-ores: 500 }
-    trial-of-the-deep: { deep-ores: 1200, rare-ores: 80, ancient-debris: 10 }
-  abilities:
-    runic-surge: { duration-seconds: 20, cooldown-seconds: 300, xp-bonus-percent: 25.0, haste-level: 1 }
+  trials: { trial-of-stone: { total-ores: 500 }, trial-of-the-deep: { deep-ores: 1200, rare-ores: 80, ancient-debris: 10 } }
+  abilities: { runic-surge: { duration-seconds: 20, cooldown-seconds: 300, xp-bonus-percent: 25.0, haste-level: 1 } }
 farmer:
   enabled: true
   xp-multiplier: 1.0
   xp: { WHEAT: 4, CARROTS: 4, POTATOES: 4, BEETROOTS: 5, NETHER_WART: 6, COCOA: 5, MELON: 3, PUMPKIN: 5 }
   anti-exploit: { location-cooldown-seconds: 30 }
-  trials:
-    trial-of-seed: { harvests: 500 }
-    trial-of-gaia: { harvests: 2000, rare-harvests: 250 }
-  abilities:
-    verdant-bloom: { duration-seconds: 20, cooldown-seconds: 300, xp-bonus-percent: 25.0 }
+  trials: { trial-of-seed: { harvests: 500 }, trial-of-gaia: { harvests: 2000, rare-harvests: 250 } }
+  abilities: { verdant-bloom: { duration-seconds: 20, cooldown-seconds: 300, xp-bonus-percent: 25.0 } }
 hunter:
   enabled: true
   xp-multiplier: 1.0
+  xp: { ZOMBIE: 5, SKELETON: 6, CREEPER: 7, SPIDER: 5, CAVE_SPIDER: 6, DROWNED: 7, HUSK: 6, STRAY: 7, BLAZE: 10, ENDERMAN: 10, PIGLIN_BRUTE: 14, WITHER_SKELETON: 12, GUARDIAN: 10, ELDER_GUARDIAN: 40, RAVAGER: 30, EVOKER: 25, WITHER: 120, WARDEN: 150 }
+  anti-exploit: { exclude-spawner: true, exclude-breeding: true }
+  trials: { trial-of-fang: { kills: 300 }, trial-of-crimson-moon: { kills: 1200, night-kills: 250, dangerous-kills: 10 } }
+  abilities: { crimson-hunt: { duration-seconds: 20, cooldown-seconds: 300, xp-bonus-percent: 25.0 } }
+lumberjack:
+  enabled: true
+  xp-multiplier: 1.0
   xp:
-    ZOMBIE: 5
-    SKELETON: 6
-    CREEPER: 7
-    SPIDER: 5
-    CAVE_SPIDER: 6
-    DROWNED: 7
-    HUSK: 6
-    STRAY: 7
-    BLAZE: 10
-    ENDERMAN: 10
-    PIGLIN_BRUTE: 14
-    WITHER_SKELETON: 12
-    GUARDIAN: 10
-    ELDER_GUARDIAN: 40
-    RAVAGER: 30
-    EVOKER: 25
-    WITHER: 120
-    WARDEN: 150
-  anti-exploit:
-    exclude-spawner: true
-    exclude-breeding: true
-  trials:
-    trial-of-fang: { kills: 300 }
-    trial-of-crimson-moon: { kills: 1200, night-kills: 250, dangerous-kills: 10 }
-  abilities:
-    crimson-hunt: { duration-seconds: 20, cooldown-seconds: 300, xp-bonus-percent: 25.0 }
+    OAK_LOG: 4
+    SPRUCE_LOG: 4
+    BIRCH_LOG: 4
+    JUNGLE_LOG: 5
+    ACACIA_LOG: 5
+    DARK_OAK_LOG: 6
+    MANGROVE_LOG: 7
+    CHERRY_LOG: 7
+    CRIMSON_STEM: 8
+    WARPED_STEM: 8
+  anti-exploit: { piston-tracking: true }
+  trials: { trial-of-timber: { logs: 750 }, trial-of-ancient-grove: { logs: 3000, elder-logs: 300 } }
+  abilities: { grove-rhythm: { duration-seconds: 20, cooldown-seconds: 300, xp-bonus-percent: 25.0 } }
 anti-exploit: { placed-ore-tracking: true, piston-move-tracking: true, cleanup-exploded-ores: true }
