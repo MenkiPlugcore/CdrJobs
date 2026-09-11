@@ -1,5 +1,5 @@
 name: CdrJobs
-version: '1.0.1'
+version: '1.0.2'
 main: store.cadera.cdrjobs.CdrJobsPlugin
 api-version: '1.21'
 author: CADERA
