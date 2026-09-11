@@ -3,6 +3,7 @@ package store.cadera.cdrjobs.service;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import store.cadera.cdrjobs.CdrJobsPlugin;
+import store.cadera.cdrjobs.api.event.MasteryTierUpEvent;
 import store.cadera.cdrjobs.data.ProfessionStore;
 import store.cadera.cdrjobs.model.JobType;
 import store.cadera.cdrjobs.util.Colors;
@@ -73,6 +74,8 @@ public final class MasteryService {
             if (plugin.getConfig().getBoolean("mastery.tier-up-sound", true)) {
                 player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.8f, 1.35f);
             }
+            plugin.getServer().getPluginManager().callEvent(
+                    new MasteryTierUpEvent(player, job, before.tier(), after.tier(), after.totalXp()));
         }
         return after;
     }
