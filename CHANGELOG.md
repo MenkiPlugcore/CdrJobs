@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.0 — Rite of Rebirth
+- Added `/cdrjobs rebirth [job]` and `/cdrjobs respec [job]` with a dedicated two-step confirmation GUI.
+- Added per-profession skill-tree respec without resetting Job level, XP, Trials, lifetime statistics, Fate milestone claims, or active-ability cooldowns.
+- Added deterministic Fate Essence refunds calculated from current purchased skill ranks and each skill's configured code cost.
+- Added configurable refund percentage and persistent per-profession Rebirth cooldown.
+- Added configurable fee modes: `NONE`, `FATE`, or optional `VAULT` economy.
+- Vault integration is soft/reflective; CdrJobs does not require Vault unless `rite-of-rebirth.fee.mode: VAULT` is selected.
+- Rebirth skill deletion, Fate refund/fee, and Rebirth cooldown are committed transactionally in SQLite to prevent double-click/restart refund exploits.
+- Added `/cdrjobsadmin forcerespec <player> <job>` / `forcerebirth` for admin bypass of fee and cooldown while preserving the normal refund.
+- `/cdrjobsadmin inspect` and debug export now surface Rebirth cooldown state.
+- No database schema migration; schema remains `9`.
+
 ## 1.1.1 — Leaderboard & Profile QoL
 - Added `/cdrjobs top <job>` profession level/XP rankings.
 - Added `/cdrjobs top total` for combined Five Paths level.
