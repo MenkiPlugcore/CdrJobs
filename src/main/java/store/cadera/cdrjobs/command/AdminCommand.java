@@ -14,10 +14,7 @@ import store.cadera.cdrjobs.data.ProfessionStore;
 import store.cadera.cdrjobs.model.JobProgress;
 import store.cadera.cdrjobs.model.JobType;
 import store.cadera.cdrjobs.model.MinerTrialProgress;
-import store.cadera.cdrjobs.service.HunterService;
-import store.cadera.cdrjobs.service.MasteryService;
-import store.cadera.cdrjobs.service.ProgressionService;
-import store.cadera.cdrjobs.service.RebirthService;
+import store.cadera.cdrjobs.service.*;
 import store.cadera.cdrjobs.util.Colors;
 import store.cadera.cdrjobs.util.JobRanks;
 
@@ -36,10 +33,11 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
     private final HunterService hunter;
     private final RebirthService rebirth;
     private final MasteryService mastery;
+    private final FateResonanceService resonance;
 
     public AdminCommand(CdrJobsPlugin plugin, Database database, ProfessionStore store,
                         ProgressionService progression, HunterService hunter,
-                        RebirthService rebirth, MasteryService mastery) {
+                        RebirthService rebirth, MasteryService mastery, FateResonanceService resonance) {
         this.plugin = plugin;
         this.database = database;
         this.store = store;
@@ -47,6 +45,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         this.hunter = hunter;
         this.rebirth = rebirth;
         this.mastery = mastery;
+        this.resonance = resonance;
     }
 
     @Override
@@ -61,6 +60,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
             case "diagnose" -> handleDiagnose(sender, args);
             case "inspect" -> handleInspect(sender, args);
             case "hunterdebug" -> handleHunterDebug(sender, args);
+            case "resonancedebug" -> handleResonanceDebug(sender, args);
             case "reload" -> handleReload(sender, args);
             case "reset" -> handleReset(sender, args);
             case "resetjob" -> handleResetJob(sender, args);
@@ -86,6 +86,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§fPlaceholderAPI: §b" + (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI") ? "ENABLED" : "NOT INSTALLED"));
         sender.sendMessage("§fVault: §b" + (Bukkit.getPluginManager().isPluginEnabled("Vault") ? "ENABLED" : "NOT INSTALLED"));
         sender.sendMessage("§fMastery: §b" + (mastery.enabled() ? "ENABLED" : "DISABLED") + " §7(max " + mastery.maxTier() + ")");
+        sender.sendMessage("§fFate Resonance: §b" + (resonance.enabled() ? "ENABLED" : "DISABLED") + " §7(" + resonance.definitions().size() + " definitions)");
         sender.sendMessage("§fProfessions: §b5/5 enabled in core");
         return true;
     }
@@ -119,6 +120,8 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§7Skills: §f" + database.getSkillRanks(uuid));
         sender.sendMessage("§7Cooldowns: §f" + formatCooldowns(database.getAbilityCooldowns(uuid)));
         sender.sendMessage("§7Total Mastery: §f" + mastery.totalMasteryTiers(uuid) + " tiers / " + mastery.totalMasteryXp(uuid) + " XP");
+        sender.sendMessage("§7Fate Resonance: §f" + resonance.unlockedCount(uuid) + " unlocked / §6" + resonance.harmonizedCount(uuid)
+                + " harmonized §8• §dscore " + resonance.score(uuid));
         sender.sendMessage("§fHighest profession: §b" + String.join("§7 / §b", highestJobs) + " §7(Lv." + highest + ")");
         return true;
     }
@@ -137,6 +140,20 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         hunter.debugLines(target).forEach(sender::sendMessage);
         sender.sendMessage("§fMob kills: §b" + store.getCounter(target.getUniqueId(), HunterService.JOB, "mob_kills"));
         sender.sendMessage("§fPvP kills: §b" + store.getCounter(target.getUniqueId(), HunterService.JOB, "pvp_kills"));
+        return true;
+    }
+
+    private boolean handleResonanceDebug(CommandSender sender, String[] args) {
+        Player target = onlineTarget(sender, args, 2, "/cdrjobsadmin resonancedebug <player>");
+        if (target == null) return true;
+        sender.sendMessage("§dFate Resonance Debug §8— §f" + target.getName());
+        for (FateResonanceService.State state : resonance.states(target.getUniqueId())) {
+            FateResonanceService.Definition d = state.definition();
+            sender.sendMessage("§7- §d" + d.id() + " §8| §f" + (state.harmonized() ? "HARMONIZED" : state.unlocked() ? "RESONANT" : "LOCKED")
+                    + " §8| §7Lv " + state.firstLevel() + "/" + state.secondLevel()
+                    + " §8| §7M " + state.firstMastery() + "/" + state.secondMastery());
+        }
+        sender.sendMessage("§7Score: §d" + resonance.score(target.getUniqueId()));
         return true;
     }
 
@@ -292,7 +309,11 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
                 .append("uuid=").append(uuid).append('\n')
                 .append("fate_essence=").append(database.getFateEssence(uuid)).append("\n")
                 .append("mastery_total_tiers=").append(mastery.totalMasteryTiers(uuid)).append("\n")
-                .append("mastery_total_xp=").append(mastery.totalMasteryXp(uuid)).append("\n\n");
+                .append("mastery_total_xp=").append(mastery.totalMasteryXp(uuid)).append("\n")
+                .append("resonance_unlocked=").append(resonance.unlockedCount(uuid)).append("\n")
+                .append("resonance_harmonized=").append(resonance.harmonizedCount(uuid)).append("\n")
+                .append("resonance_score=").append(resonance.score(uuid)).append("\n")
+                .append("resonance_names=").append(resonance.unlockedNames(uuid)).append("\n\n");
         for (JobType job : JobType.values()) {
             JobProgress p = database.getProgress(uuid, job);
             MasteryService.State ms = mastery.state(uuid, job);
@@ -363,7 +384,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
 
     private void sendUsage(CommandSender sender) {
         sender.sendMessage("§3CdrJobs Admin Commands");
-        sender.sendMessage("§bdiagnose, inspect, hunterdebug, reload, export");
+        sender.sendMessage("§bdiagnose, inspect, hunterdebug, resonancedebug, reload, export");
         sender.sendMessage("§baddxp, setlevel, addessence, setessence, addmasteryxp, setmastery");
         sender.sendMessage("§breset, resetjob, resettrial, resetcooldown, forcerespec");
     }
@@ -371,7 +392,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
-        List<String> root = List.of("diagnose","inspect","hunterdebug","reload","export","addxp","setlevel",
+        List<String> root = List.of("diagnose","inspect","hunterdebug","resonancedebug","reload","export","addxp","setlevel",
                 "addessence","setessence","addmasteryxp","setmastery","reset","resetjob","resettrial","resetcooldown","forcerespec");
         if (args.length == 1) return filter(root, args[0]);
         if (args.length == 2 && !List.of("diagnose","reload").contains(args[0].toLowerCase(Locale.ROOT))) {
