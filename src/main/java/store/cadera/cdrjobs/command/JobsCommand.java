@@ -35,11 +35,12 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
     private final FisherService fisher;
     private final LeaderboardService leaderboards;
     private final MasteryService mastery;
+    private final ContractService contracts;
 
     public JobsCommand(CdrJobsPlugin plugin, Database db, JobsMenu menu, RebirthMenu rebirthMenu,
                        LevelService levels, MinerAbilityService miner, FarmerService farmer,
                        HunterService hunter, LumberjackService lumber, FisherService fisher,
-                       LeaderboardService leaderboards, MasteryService mastery) {
+                       LeaderboardService leaderboards, MasteryService mastery, ContractService contracts) {
         this.plugin = plugin;
         this.db = db;
         this.menu = menu;
@@ -52,6 +53,7 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
         this.fisher = fisher;
         this.leaderboards = leaderboards;
         this.mastery = mastery;
+        this.contracts = contracts;
     }
 
     @Override
@@ -75,6 +77,7 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
             case "profile" -> openProfile(player, args);
             case "top", "leaderboard" -> showLeaderboard(player, args);
             case "mastery", "prestige" -> showMastery(player, args);
+            case "contracts", "contract" -> showContracts(player, args);
             case "rebirth", "respec" -> openRebirth(player, args);
             case "miner", "skills" -> menu.openMiner(player);
             case "farmer" -> menu.openFarmer(player);
@@ -101,6 +104,52 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
             default -> menu.openMain(player);
         }
         return true;
+    }
+
+    private void showContracts(Player player, String[] args) {
+        if (!contracts.enabled()) {
+            player.sendMessage("§cProfession Contracts sedang dinonaktifkan.");
+            return;
+        }
+        if (args.length == 1) {
+            player.sendMessage("§6✦ Profession Contracts");
+            contracts.lines(player.getUniqueId()).forEach(player::sendMessage);
+            player.sendMessage("§7Claim: §f/cdrjobs contracts claim <daily|weekly>");
+            player.sendMessage("§7Reroll: §f/cdrjobs contracts reroll <daily|weekly>");
+            return;
+        }
+        if (args.length != 3) {
+            player.sendMessage("§cUsage: /cdrjobs contracts <claim|reroll> <daily|weekly>");
+            return;
+        }
+        ContractService.Cadence cadence = ContractService.Cadence.parse(args[2]);
+        if (cadence == null) {
+            player.sendMessage("§cCadence tidak valid. Gunakan daily atau weekly.");
+            return;
+        }
+        if (args[1].equalsIgnoreCase("claim")) {
+            ContractService.ClaimResult result = contracts.claim(player, cadence);
+            switch (result) {
+                case SUCCESS -> { }
+                case INCOMPLETE -> player.sendMessage("§eContract belum selesai.");
+                case ALREADY_CLAIMED -> player.sendMessage("§eReward contract cycle ini sudah di-claim.");
+                case DISABLED -> player.sendMessage("§cProfession Contracts sedang dinonaktifkan.");
+                case REWARD_ERROR -> player.sendMessage("§cReward gagal dikirim. Hubungi admin dan cek console.");
+            }
+            return;
+        }
+        if (args[1].equalsIgnoreCase("reroll")) {
+            ContractService.RerollResult result = contracts.reroll(player, cadence);
+            switch (result) {
+                case SUCCESS -> { }
+                case LOCKED -> player.sendMessage("§eContract yang selesai/claimed tidak bisa direroll.");
+                case NO_REROLLS -> player.sendMessage("§eJatah reroll cycle ini sudah habis.");
+                case NO_ALTERNATIVE -> player.sendMessage("§eTidak ada contract alternatif untuk cadence ini.");
+                case DISABLED -> player.sendMessage("§cProfession Contracts sedang dinonaktifkan.");
+            }
+            return;
+        }
+        player.sendMessage("§cUsage: /cdrjobs contracts <claim|reroll> <daily|weekly>");
     }
 
     private void showMastery(Player player, String[] args) {
@@ -310,11 +359,18 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
-        if (args.length == 1) return List.of("profile", "top", "mastery", "rebirth", "stats", "miner", "farmer", "hunter", "lumberjack", "fisher", "trials", "ability");
+        if (args.length == 1) return List.of("profile", "top", "mastery", "contracts", "rebirth", "stats", "miner", "farmer", "hunter", "lumberjack", "fisher", "trials", "ability");
         if (args.length == 2 && (args[0].equalsIgnoreCase("trials") || args[0].equalsIgnoreCase("ability")
                 || args[0].equalsIgnoreCase("rebirth") || args[0].equalsIgnoreCase("respec")
                 || args[0].equalsIgnoreCase("mastery") || args[0].equalsIgnoreCase("prestige"))) {
             return List.of("miner", "farmer", "hunter", "lumberjack", "fisher");
+        }
+        if (args.length == 2 && (args[0].equalsIgnoreCase("contracts") || args[0].equalsIgnoreCase("contract"))) {
+            return List.of("claim", "reroll");
+        }
+        if (args.length == 3 && (args[0].equalsIgnoreCase("contracts") || args[0].equalsIgnoreCase("contract"))
+                && (args[1].equalsIgnoreCase("claim") || args[1].equalsIgnoreCase("reroll"))) {
+            return List.of("daily", "weekly");
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("top")) {
             return List.of("total", "pvp", "activity", "mastery", "mastery-total", "miner", "farmer", "hunter", "lumberjack", "fisher");
