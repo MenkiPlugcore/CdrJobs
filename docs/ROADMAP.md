@@ -16,7 +16,7 @@
 
 ## Current candidate
 - [x] v1.5.0 — Fate Resonance implementation
-- [ ] v1.5.0 CI `clean verify` on final commit
+- [x] v1.5.0 CI `clean verify`
 - [ ] all ten unique Five Paths pair definitions load from config
 - [ ] Resonant threshold regression at configured minimum Job levels
 - [ ] Harmonized threshold regression at configured Mastery tier
