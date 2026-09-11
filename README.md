@@ -2,7 +2,8 @@
 
 **Choose Your Path, Shape Your Fate.**
 
-Current production candidate: `v0.9.0 — Adventurer API`.
+Stable baseline: `v1.0.0 — Five Paths`.
+Current testing candidate: `v1.0.1 — Stability Patch`.
 
 ## Professions
 - ⛏ Runebound Delver — Miner
@@ -23,9 +24,10 @@ Each profession has Lv.1–100 progression, fantasy ranks, Path of Ascension, sc
 - GitHub Actions `clean verify`
 - automatic CI JAR artifact
 - `/cdrjobsadmin diagnose`
+- `/cdrjobsadmin inspect <player>` in v1.0.1
 
 ## Server testing
-See [`docs/TESTING.md`](docs/TESTING.md).
+See [`docs/TESTING.md`](docs/TESTING.md) and [`docs/RELEASE_PROCESS.md`](docs/RELEASE_PROCESS.md).
 
 ## Developer API
 See [`docs/API.md`](docs/API.md).
@@ -33,7 +35,13 @@ See [`docs/API.md`](docs/API.md).
 ## Commands
 `/cdrjobs`, `/cdrjobs stats`, `/cdrjobs <job>`, `/cdrjobs trials <job>`, `/cdrjobs ability <job>`
 
-Admin: `/cdrjobsadmin diagnose`, `reload`, `reset`, `addxp`, `setlevel`.
+Admin:
+- `/cdrjobsadmin diagnose`
+- `/cdrjobsadmin inspect <player>`
+- `/cdrjobsadmin reload`
+- `/cdrjobsadmin reset <player>`
+- `/cdrjobsadmin addxp <player> [job] <amount>`
+- `/cdrjobsadmin setlevel <player> [job] <level>`
 
 ## Build
 Requires Java 21 and Paper API 1.21.4.
@@ -41,4 +49,4 @@ Requires Java 21 and Paper API 1.21.4.
 mvn clean verify
 ```
 
-MENKIESTESParty is intentionally not a dependency in the standalone release. Integration begins after v1.0.0.
+MENKIESTESParty is intentionally not a dependency in the standalone release. Integration begins only after the standalone release train remains stable through regression testing.
