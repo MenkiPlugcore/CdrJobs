@@ -93,7 +93,7 @@ public final class CdrJobsPlugin extends JavaPlugin {
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             new CdrJobsExpansion(this, database, professionStore, levelService).register();
         }
-        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — HUNTER QOL & SAFETY enabled.");
+        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — ADMIN & DEBUG TOOLS enabled.");
     }
 
     @Override
