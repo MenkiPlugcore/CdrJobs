@@ -76,5 +76,10 @@ public final class ConfigValidator {
         }
         if (plugin.getConfig().getInt("rite-of-rebirth.fee.fate-essence", 0) < 0) plugin.getLogger().warning("Rebirth Fate fee cannot be negative.");
         if (plugin.getConfig().getDouble("rite-of-rebirth.fee.vault", 0D) < 0D) plugin.getLogger().warning("Rebirth Vault fee cannot be negative.");
+
+        int masteryMax = plugin.getConfig().getInt("mastery.max-tier", 10);
+        if (masteryMax < 1 || masteryMax > 50) plugin.getLogger().warning("mastery.max-tier should be 1-50; runtime clamps it.");
+        if (plugin.getConfig().getLong("mastery.base-xp", 5000L) <= 0L) plugin.getLogger().warning("mastery.base-xp must be > 0; runtime clamps it.");
+        if (plugin.getConfig().getLong("mastery.growth-per-tier", 2500L) < 0L) plugin.getLogger().warning("mastery.growth-per-tier cannot be negative; runtime clamps it.");
     }
 }
