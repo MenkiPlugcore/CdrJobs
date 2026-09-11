@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.6.0 — Public API v2 & GUI Refresh
+- Raised `CdrJobsAPI.API_VERSION` from `1` to `2` while retaining all v1 read/progression methods.
+- Added Bukkit `ServicesManager` publication for `CdrJobsAPI`; `CdrJobsPlugin#getApi()` remains supported.
+- Added immutable API snapshots for player/profile state, professions, skills, Trial/statistics data, ability cooldowns, Mastery, Contracts, Fate Resonance and cached leaderboards.
+- Added tie-safe `getHighestProfessions(UUID)` while keeping the original single-result `getHighestProfession(UUID)` method.
+- Added public `SkillUpgradeEvent`, `ProfessionAwakeningEvent`, `TrialCompleteEvent`, `MasteryTierUpEvent`, `HunterPvpRewardEvent`, `ContractCompleteEvent`, `ContractClaimEvent` and `RebirthEvent`.
+- Trial events fire only on incomplete-to-complete transitions; Hunter PvP reward events fire only after existing anti-farm gates accept a kill.
+- Added aesthetic GUI theming with profession-specific stained-glass framing while preserving all functional item slots/PDC actions.
+- Added inventory drag protection for CdrJobs/Rebirth GUI top inventories.
+- Replaced silent GUI action exception swallowing with contextual warning logs and a safe player-facing error message.
+- Hardened Contract claims with XP/Fate delivery checkpoints so ordinary retry after a component failure does not repay already checkpointed components.
+- Hardened Contract progress percentage math against long overflow.
+- Added startup pruning for expired `reward_locations` rows to prevent indefinite cooldown-location table growth.
+- Added `PRAGMA busy_timeout=3000` to ProfessionStore's SQLite connection.
+- Updated API/testing documentation and release matrix for current systems.
+- No database schema migration; schema remains `9`.
+
 ## 1.5.0 — Fate Resonance
 - Added derived cross-profession Fate Resonance for all ten unique Five Paths pairings.
 - Resonance unlocks dynamically from canonical profession levels; no separate player resonance state is stored.
