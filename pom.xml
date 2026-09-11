@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>store.cadera</groupId>
   <artifactId>CdrJobs</artifactId>
-  <version>1.0.2</version>
+  <version>1.0.3</version>
   <name>CdrJobs</name>
   <description>Fantasy profession progression system for Paper servers.</description>
   <properties>
