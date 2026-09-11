@@ -11,21 +11,24 @@
 - [x] v1.1.0 — Adventurer Profile implementation + CI
 - [x] v1.1.1 — Leaderboard & Profile QoL implementation + CI
 - [x] v1.2.0 — Rite of Rebirth implementation + CI
+- [x] v1.3.0 — Profession Mastery implementation + CI
 
 ## Current candidate
-- [x] v1.3.0 — Profession Mastery implementation
-- [x] v1.3.0 CI `clean verify`
-- [ ] Level 100 XP routing + overflow regression test across all five professions
-- [ ] Mastery I–X curve/config reload test
-- [ ] restart/persistence test for Mastery XP
-- [ ] Mastery leaderboard/cache test
-- [ ] PlaceholderAPI Mastery regression test
-- [ ] Rebirth must preserve Mastery; resetjob/full reset must clear affected Mastery
-- [ ] re-run Five Paths progression + anti-exploit regression matrix
-- [ ] promote v1.3.0 to stable only after real-server validation
+- [x] v1.4.0 — Profession Contracts implementation
+- [ ] v1.4.0 CI `clean verify` on final HEAD
+- [ ] Daily/Weekly deterministic assignment regression test
+- [ ] all five ProfessionActionEvent progress paths test
+- [ ] anti-exploit activities must not advance Contracts
+- [ ] claim/reward exactly-once test
+- [ ] reroll limit/reset/lock test
+- [ ] timezone daily + Monday weekly rollover test
+- [ ] restart persistence test for contract cycle/progress/claimed/rerolls
+- [ ] PlaceholderAPI contract regression test
+- [ ] custom contract definition + `/cdrjobsadmin reload` test
+- [ ] re-run v1.3.0 Mastery + Five Paths regression matrix
+- [ ] promote v1.4.0 to stable only after real-server validation
 
 ## Later standalone roadmap
-- [ ] v1.4.0 — Profession Contracts
 - [ ] v1.5.0 — Fate Resonance
 - [ ] v1.6.0 — Public API v2
 
