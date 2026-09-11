@@ -31,6 +31,7 @@ public final class CdrJobsPlugin extends JavaPlugin {
     private FileConfiguration messages;
     private Database database;
     private ProfessionStore professionStore;
+    private LeaderboardService leaderboardService;
     private LevelService levelService;
     private CdrJobsAPI api;
     private MinerListener minerListener;
@@ -55,6 +56,7 @@ public final class CdrJobsPlugin extends JavaPlugin {
             professionStore.connect();
             professionStore.setSchemaVersion(9);
             database.backfillFateMilestoneClaims(fateMilestones().keySet());
+            leaderboardService = new LeaderboardService(this, getDataFolder());
         } catch (Exception exception) {
             getLogger().log(Level.SEVERE, "Failed to initialize SQLite", exception);
             getServer().getPluginManager().disablePlugin(this);
@@ -77,7 +79,7 @@ public final class CdrJobsPlugin extends JavaPlugin {
         JobsMenu menu = new JobsMenu(this, database, professionStore, levelService, minerTrials,
                 farmer, hunter, lumberjack, fisher, profiles);
         JobsCommand jobsCommand = new JobsCommand(this, database, menu, levelService, minerAbility,
-                farmer, hunter, lumberjack, fisher);
+                farmer, hunter, lumberjack, fisher, leaderboardService);
         AdminCommand adminCommand = new AdminCommand(this, database, professionStore, progression, hunter);
         registerCommand("cdrjobs", jobsCommand, jobsCommand);
         registerCommand("cdrjobsadmin", adminCommand, adminCommand);
@@ -96,12 +98,14 @@ public final class CdrJobsPlugin extends JavaPlugin {
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             new CdrJobsExpansion(this, database, professionStore, levelService, profiles).register();
         }
-        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — ADVENTURER PROFILE enabled.");
+        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — LEADERBOARD & PROFILE QOL enabled.");
     }
 
     @Override
     public void onDisable() {
         api = null;
+        try { if (leaderboardService != null) leaderboardService.close(); }
+        catch (SQLException exception) { getLogger().warning(exception.getMessage()); }
         try { if (professionStore != null) professionStore.close(); }
         catch (SQLException exception) { getLogger().warning(exception.getMessage()); }
         try { if (database != null) database.close(); }
@@ -142,6 +146,7 @@ public final class CdrJobsPlugin extends JavaPlugin {
         saveConfig();
         loadMessages();
         ConfigValidator.validate(this);
+        if (leaderboardService != null) leaderboardService.invalidateAll();
         if (minerListener != null) minerListener.refreshXpMap();
         if (farmerListener != null) farmerListener.refreshXpMap();
         if (hunterListener != null) hunterListener.refreshXpMap();

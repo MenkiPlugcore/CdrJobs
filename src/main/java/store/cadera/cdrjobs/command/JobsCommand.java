@@ -31,10 +31,11 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
     private final HunterService hunter;
     private final LumberjackService lumber;
     private final FisherService fisher;
+    private final LeaderboardService leaderboards;
 
     public JobsCommand(CdrJobsPlugin plugin, Database db, JobsMenu menu, LevelService levels,
                        MinerAbilityService miner, FarmerService farmer, HunterService hunter,
-                       LumberjackService lumber, FisherService fisher) {
+                       LumberjackService lumber, FisherService fisher, LeaderboardService leaderboards) {
         this.plugin = plugin;
         this.db = db;
         this.menu = menu;
@@ -44,6 +45,7 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
         this.hunter = hunter;
         this.lumber = lumber;
         this.fisher = fisher;
+        this.leaderboards = leaderboards;
     }
 
     @Override
@@ -65,6 +67,7 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
         String sub = args[0].toLowerCase(Locale.ROOT);
         switch (sub) {
             case "profile" -> openProfile(player, args);
+            case "top", "leaderboard" -> showLeaderboard(player, args);
             case "miner", "skills" -> menu.openMiner(player);
             case "farmer" -> menu.openFarmer(player);
             case "hunter" -> menu.openHunter(player);
@@ -108,6 +111,72 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
         menu.openProfile(viewer, target);
     }
 
+    private void showLeaderboard(Player viewer, String[] args) {
+        if (args.length < 2) {
+            viewer.sendMessage("§3CdrJobs Leaderboard");
+            viewer.sendMessage("§7/cdrjobs top <miner|farmer|hunter|lumberjack|fisher>");
+            viewer.sendMessage("§7/cdrjobs top total");
+            viewer.sendMessage("§7/cdrjobs top pvp");
+            viewer.sendMessage("§7/cdrjobs top activity <job>");
+            return;
+        }
+
+        String type = args[1].toLowerCase(Locale.ROOT);
+        if (type.equals("total")) {
+            sendRows(viewer, "Total Profession Level", leaderboards.totalLevel(), RowMode.TOTAL);
+            return;
+        }
+        if (type.equals("pvp") || type.equals("hunterpvp")) {
+            sendRows(viewer, "Hunter PvP Kills", leaderboards.hunterPvp(), RowMode.COUNT);
+            return;
+        }
+        if (type.equals("activity")) {
+            if (args.length < 3) {
+                viewer.sendMessage("§cUsage: /cdrjobs top activity <job>");
+                return;
+            }
+            JobType job = parseJob(args[2]);
+            if (job == null) {
+                viewer.sendMessage("§cJob tidak valid.");
+                return;
+            }
+            sendRows(viewer, job.displayName() + " Activity", leaderboards.activity(job), RowMode.COUNT);
+            return;
+        }
+
+        JobType job = parseJob(type);
+        if (job == null) {
+            viewer.sendMessage("§cLeaderboard tidak valid. Gunakan job, total, pvp, atau activity <job>.");
+            return;
+        }
+        sendRows(viewer, job.displayName() + " Profession", leaderboards.profession(job), RowMode.PROFESSION);
+    }
+
+    private void sendRows(Player viewer, String title, List<LeaderboardService.LeaderboardRow> rows, RowMode mode) {
+        viewer.sendMessage("§3✦ CdrJobs Top — §f" + title + " §8(cache " + plugin.getConfig().getLong("leaderboards.cache-seconds", 30L) + "s)");
+        if (rows.isEmpty()) {
+            viewer.sendMessage("§7Belum ada data leaderboard.");
+            return;
+        }
+        for (int i = 0; i < rows.size(); i++) {
+            LeaderboardService.LeaderboardRow row = rows.get(i);
+            String value = switch (mode) {
+                case PROFESSION -> "§bLv." + row.value() + " §7• XP §f" + row.secondary();
+                case TOTAL -> "§b" + row.value() + " §7total level";
+                case COUNT -> "§b" + row.value();
+            };
+            viewer.sendMessage("§6#" + (i + 1) + " §f" + row.name() + " §8— " + value);
+        }
+    }
+
+    private JobType parseJob(String raw) {
+        String value = raw.toLowerCase(Locale.ROOT);
+        if (value.equals("lumber")) value = "lumberjack";
+        if (value.equals("fish")) value = "fisher";
+        try { return JobType.valueOf(value.toUpperCase(Locale.ROOT)); }
+        catch (IllegalArgumentException ignored) { return null; }
+    }
+
     private void sendStats(Player viewer, String[] args) {
         Player target = viewer;
         if (args.length > 1 && viewer.hasPermission("cdrjobs.admin")) {
@@ -127,8 +196,14 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
-        if (args.length == 1) return List.of("profile", "stats", "miner", "farmer", "hunter", "lumberjack", "fisher", "trials", "ability");
+        if (args.length == 1) return List.of("profile", "top", "stats", "miner", "farmer", "hunter", "lumberjack", "fisher", "trials", "ability");
         if (args.length == 2 && (args[0].equalsIgnoreCase("trials") || args[0].equalsIgnoreCase("ability"))) {
+            return List.of("miner", "farmer", "hunter", "lumberjack", "fisher");
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("top")) {
+            return List.of("total", "pvp", "activity", "miner", "farmer", "hunter", "lumberjack", "fisher");
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("top") && args[1].equalsIgnoreCase("activity")) {
             return List.of("miner", "farmer", "hunter", "lumberjack", "fisher");
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("stats") || args[0].equalsIgnoreCase("profile"))) {
@@ -138,4 +213,6 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
         }
         return List.of();
     }
+
+    private enum RowMode { PROFESSION, TOTAL, COUNT }
 }

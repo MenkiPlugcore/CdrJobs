@@ -8,21 +8,15 @@
 - [x] Fisher — Tidebound Angler
 - [x] v1.0.0 — Five Paths standalone production baseline
 - [x] v1.0.1–v1.0.5 — Stability, Hunter safety, admin/debug hardening
-- [x] Trial reset hardening with lifetime statistic preservation
+- [x] v1.1.0 — Adventurer Profile implementation
+- [x] v1.1.0 CI `clean verify`
 
 ## Current candidate
-- [x] v1.1.0 — Adventurer Profile implementation
-- [ ] v1.1.0 CI `clean verify`
-- [ ] v1.1.0 Profile GUI / PlaceholderAPI regression test
-- [ ] v1.1.0 restart/persistence smoke test
-
-## Next standalone update
-- [ ] v1.1.1 — Leaderboard & Profile QoL
-  - profession leaderboards
-  - total profession level leaderboard
-  - Hunter PvP leaderboard
-  - activity leaderboards
-  - cached leaderboard reads
+- [x] v1.1.1 — Leaderboard & Profile QoL implementation
+- [ ] v1.1.1 CI `clean verify`
+- [ ] profession/total/PvP/activity leaderboard regression test
+- [ ] cache/reload behavior test
+- [ ] restart/persistence smoke test
 
 ## Later standalone roadmap
 - [ ] v1.2.0 — Rite of Rebirth

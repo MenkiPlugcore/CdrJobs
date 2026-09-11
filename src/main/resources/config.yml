@@ -1,4 +1,4 @@
-# CdrJobs v1.1.0 — ADVENTURER PROFILE
+# CdrJobs v1.1.1 — LEADERBOARD & PROFILE QOL
 # Production defaults. MENKIESTES SOFTWARE / CADERA
 settings:
   max-level: 100
@@ -6,6 +6,9 @@ settings:
   levelup-sound: true
   save-on-disable: true
   xp-curve: { base-xp: 100, linear-growth: 0, quadratic-growth: 15 }
+leaderboards:
+  limit: 10
+  cache-seconds: 30
 fate-essence-milestones: { 10: 1, 25: 1, 45: 1, 70: 1, 100: 2 }
 miner:
   enabled: true
