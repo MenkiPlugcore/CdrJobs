@@ -15,6 +15,7 @@ import store.cadera.cdrjobs.model.JobProgress;
 import store.cadera.cdrjobs.model.JobType;
 import store.cadera.cdrjobs.model.MinerTrialProgress;
 import store.cadera.cdrjobs.service.HunterService;
+import store.cadera.cdrjobs.service.MasteryService;
 import store.cadera.cdrjobs.service.ProgressionService;
 import store.cadera.cdrjobs.service.RebirthService;
 import store.cadera.cdrjobs.util.Colors;
@@ -34,19 +35,23 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
     private final ProgressionService progression;
     private final HunterService hunter;
     private final RebirthService rebirth;
+    private final MasteryService mastery;
 
     public AdminCommand(CdrJobsPlugin plugin, Database database, ProfessionStore store,
-                        ProgressionService progression, HunterService hunter, RebirthService rebirth) {
+                        ProgressionService progression, HunterService hunter,
+                        RebirthService rebirth, MasteryService mastery) {
         this.plugin = plugin;
         this.database = database;
         this.store = store;
         this.progression = progression;
         this.hunter = hunter;
         this.rebirth = rebirth;
+        this.mastery = mastery;
     }
 
     @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
+                             @NotNull String label, @NotNull String[] args) {
         if (!sender.hasPermission("cdrjobs.admin")) {
             sender.sendMessage(Colors.color(plugin.prefix() + plugin.message("no-permission")));
             return true;
@@ -63,6 +68,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
             case "resetcooldown" -> handleResetCooldown(sender, args);
             case "forcerespec", "forcerebirth" -> handleForceRebirth(sender, args);
             case "addessence", "setessence" -> handleEssence(sender, args);
+            case "addmasteryxp", "setmastery" -> handleMastery(sender, args);
             case "export" -> handleExport(sender, args);
             case "addxp", "setlevel" -> handleProgressCommand(sender, args);
             default -> { sendUsage(sender); yield true; }
@@ -79,6 +85,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§fMinecraft: §b" + Bukkit.getMinecraftVersion());
         sender.sendMessage("§fPlaceholderAPI: §b" + (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI") ? "ENABLED" : "NOT INSTALLED"));
         sender.sendMessage("§fVault: §b" + (Bukkit.getPluginManager().isPluginEnabled("Vault") ? "ENABLED" : "NOT INSTALLED"));
+        sender.sendMessage("§fMastery: §b" + (mastery.enabled() ? "ENABLED" : "DISABLED") + " §7(max " + mastery.maxTier() + ")");
         sender.sendMessage("§fProfessions: §b5/5 enabled in core");
         return true;
     }
@@ -94,7 +101,10 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         List<String> highestJobs = new ArrayList<>();
         for (JobType job : JobType.values()) {
             JobProgress p = database.getProgress(uuid, job);
-            sender.sendMessage("§7- §b" + job.displayName() + " §7Lv.§f" + p.level() + " §7XP §f" + p.xp() + " §8• §d" + JobRanks.title(job, p.level()));
+            MasteryService.State ms = mastery.state(uuid, job);
+            sender.sendMessage("§7- §b" + job.displayName() + " §7Lv.§f" + p.level() + " §7XP §f" + p.xp()
+                    + " §8• §d" + JobRanks.title(job, p.level()) + " §8• §6M." + mastery.roman(ms.tier())
+                    + " §7(" + ms.totalXp() + " XP)");
             Map<String,Long> counters = store.getCounters(uuid, job.name());
             Map<String,Boolean> flags = store.getFlags(uuid, job.name());
             if (!counters.isEmpty()) sender.sendMessage("  §7Counters: §f" + counters);
@@ -108,6 +118,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§7Miner trials: §f" + miner);
         sender.sendMessage("§7Skills: §f" + database.getSkillRanks(uuid));
         sender.sendMessage("§7Cooldowns: §f" + formatCooldowns(database.getAbilityCooldowns(uuid)));
+        sender.sendMessage("§7Total Mastery: §f" + mastery.totalMasteryTiers(uuid) + " tiers / " + mastery.totalMasteryXp(uuid) + " XP");
         sender.sendMessage("§fHighest profession: §b" + String.join("§7 / §b", highestJobs) + " §7(Lv." + highest + ")");
         return true;
     }
@@ -193,9 +204,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
             target.sendMessage("§dAdmin menjalankan Rite of Rebirth untuk " + job.displayName() + ". Refund: §f" + outcome.refundEssence() + " Fate Essence§d.");
         } else if (outcome.status() == RebirthService.Status.NO_SKILLS) {
             sender.sendMessage("§ePlayer tidak memiliki skill yang bisa di-respec pada Job itu.");
-        } else {
-            sender.sendMessage("§cForce Rebirth gagal: " + outcome.status());
-        }
+        } else sender.sendMessage("§cForce Rebirth gagal: " + outcome.status());
         return true;
     }
 
@@ -213,9 +222,36 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
                 database.setFateEssence(target.getUniqueId(), amount);
             }
             sender.sendMessage("§aFate Essence " + target.getName() + ": " + database.getFateEssence(target.getUniqueId()));
-        } catch (NumberFormatException e) {
-            sender.sendMessage("§cAmount harus angka valid.");
+        } catch (NumberFormatException e) { sender.sendMessage("§cAmount harus angka valid."); }
+        return true;
+    }
+
+    private boolean handleMastery(CommandSender sender, String[] args) {
+        if (args.length != 4) {
+            sender.sendMessage("§cUsage: /cdrjobsadmin " + args[0] + " <player> <job> <value>");
+            return true;
         }
+        Player target = Bukkit.getPlayerExact(args[1]);
+        if (target == null) { sender.sendMessage("§cPlayer harus online."); return true; }
+        JobType job = parseJob(sender, args[2]);
+        if (job == null) return true;
+        try {
+            MasteryService.State state;
+            if (args[0].equalsIgnoreCase("addmasteryxp")) {
+                long amount = Long.parseLong(args[3]);
+                if (amount <= 0L) { sender.sendMessage("§cMastery XP harus lebih besar dari 0."); return true; }
+                state = mastery.addAdminXp(target.getUniqueId(), job, amount);
+            } else {
+                int tier = Integer.parseInt(args[3]);
+                if (tier < 0 || tier > mastery.maxTier()) {
+                    sender.sendMessage("§cMastery tier harus 0-" + mastery.maxTier() + ".");
+                    return true;
+                }
+                state = mastery.setTier(target.getUniqueId(), job, tier);
+            }
+            sender.sendMessage("§a" + target.getName() + " " + job.name() + " Mastery: "
+                    + mastery.roman(state.tier()) + " (" + state.totalXp() + " total XP).");
+        } catch (NumberFormatException e) { sender.sendMessage("§cNilai Mastery harus angka valid."); }
         return true;
     }
 
@@ -254,12 +290,18 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
                 .append("schema=").append(store.getSchemaVersion()).append('\n')
                 .append("player=").append(target.getName()).append('\n')
                 .append("uuid=").append(uuid).append('\n')
-                .append("fate_essence=").append(database.getFateEssence(uuid)).append("\n\n");
+                .append("fate_essence=").append(database.getFateEssence(uuid)).append("\n")
+                .append("mastery_total_tiers=").append(mastery.totalMasteryTiers(uuid)).append("\n")
+                .append("mastery_total_xp=").append(mastery.totalMasteryXp(uuid)).append("\n\n");
         for (JobType job : JobType.values()) {
             JobProgress p = database.getProgress(uuid, job);
+            MasteryService.State ms = mastery.state(uuid, job);
             b.append('[').append(job.name()).append("]\nlevel=").append(p.level())
                     .append("\nxp=").append(p.xp())
                     .append("\nrank=").append(JobRanks.title(job, p.level()))
+                    .append("\nmastery_tier=").append(ms.tier())
+                    .append("\nmastery_xp=").append(ms.xp())
+                    .append("\nmastery_total_xp=").append(ms.totalXp())
                     .append("\ncounters=").append(store.getCounters(uuid, job.name()))
                     .append("\nflags=").append(store.getFlags(uuid, job.name()))
                     .append("\nrebirth_cooldown_seconds=").append(rebirth.cooldownRemainingSeconds(uuid, job))
@@ -297,9 +339,7 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
                 progression.setLevel(target, job, level);
                 sender.sendMessage("§a" + job.name() + " level " + target.getName() + " diubah ke " + level + ".");
             }
-        } catch (NumberFormatException e) {
-            sender.sendMessage("§cNilai harus berupa angka yang valid.");
-        }
+        } catch (NumberFormatException e) { sender.sendMessage("§cNilai harus berupa angka yang valid."); }
         return true;
     }
 
@@ -311,7 +351,10 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
     }
 
     private JobType parseJob(CommandSender sender, String raw) {
-        try { return JobType.valueOf(raw.toUpperCase(Locale.ROOT)); }
+        String value = raw.toUpperCase(Locale.ROOT);
+        if (value.equals("LUMBER")) value = "LUMBERJACK";
+        if (value.equals("FISH")) value = "FISHER";
+        try { return JobType.valueOf(value); }
         catch (IllegalArgumentException e) {
             sender.sendMessage("§cJob tidak valid. Gunakan: miner, farmer, hunter, lumberjack, fisher.");
             return null;
@@ -321,21 +364,23 @@ public final class AdminCommand implements CommandExecutor, TabCompleter {
     private void sendUsage(CommandSender sender) {
         sender.sendMessage("§3CdrJobs Admin Commands");
         sender.sendMessage("§bdiagnose, inspect, hunterdebug, reload, export");
-        sender.sendMessage("§baddxp, setlevel, addessence, setessence");
+        sender.sendMessage("§baddxp, setlevel, addessence, setessence, addmasteryxp, setmastery");
         sender.sendMessage("§breset, resetjob, resettrial, resetcooldown, forcerespec");
     }
 
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
-        List<String> root = List.of("diagnose","inspect","hunterdebug","reload","export","addxp","setlevel","addessence","setessence","reset","resetjob","resettrial","resetcooldown","forcerespec");
+        List<String> root = List.of("diagnose","inspect","hunterdebug","reload","export","addxp","setlevel",
+                "addessence","setessence","addmasteryxp","setmastery","reset","resetjob","resettrial","resetcooldown","forcerespec");
         if (args.length == 1) return filter(root, args[0]);
         if (args.length == 2 && !List.of("diagnose","reload").contains(args[0].toLowerCase(Locale.ROOT))) {
             List<String> names = new ArrayList<>();
             Bukkit.getOnlinePlayers().forEach(p -> names.add(p.getName()));
             return filter(names, args[1]);
         }
-        if (args.length == 3 && List.of("resetjob","resettrial","resetcooldown","forcerespec","addxp","setlevel").contains(args[0].toLowerCase(Locale.ROOT))) {
+        if (args.length == 3 && List.of("resetjob","resettrial","resetcooldown","forcerespec","addxp","setlevel","addmasteryxp","setmastery")
+                .contains(args[0].toLowerCase(Locale.ROOT))) {
             return filter(Arrays.stream(JobType.values()).map(j -> j.name().toLowerCase(Locale.ROOT)).toList(), args[2]);
         }
         if (args.length == 3 && args[0].equalsIgnoreCase("export")) return filter(List.of("file","console","both"), args[2]);
