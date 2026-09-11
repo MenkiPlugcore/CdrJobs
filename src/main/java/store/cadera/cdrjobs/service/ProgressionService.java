@@ -16,16 +16,24 @@ public final class ProgressionService {
     private final CdrJobsPlugin plugin;
     private final Database database;
     private final LevelService levels;
+    private final MasteryService mastery;
 
-    public ProgressionService(CdrJobsPlugin plugin, Database database, LevelService levels) {
+    public ProgressionService(CdrJobsPlugin plugin, Database database, LevelService levels, MasteryService mastery) {
         this.plugin = plugin;
         this.database = database;
         this.levels = levels;
+        this.mastery = mastery;
     }
 
     public JobProgress addXp(Player player, JobType job, long amount) {
         JobProgress current = database.getProgress(player.getUniqueId(), job);
-        if (amount <= 0L || current.level() >= levels.maxLevel()) return current;
+        if (amount <= 0L) return current;
+
+        if (current.level() >= levels.maxLevel()) {
+            mastery.addXp(player, job, amount);
+            plugin.getServer().getPluginManager().callEvent(new ProfessionXpGainEvent(player, job, amount, current));
+            return current;
+        }
 
         int level = current.level();
         long xp = saturatingAdd(current.xp(), amount);
@@ -39,8 +47,14 @@ public final class ProgressionService {
             onLevelUp(player, job, oldLevel, level);
         }
 
-        if (level >= levels.maxLevel()) xp = 0L;
+        long masteryOverflow = 0L;
+        if (level >= levels.maxLevel()) {
+            masteryOverflow = xp;
+            xp = 0L;
+        }
         database.setProgress(player.getUniqueId(), job, level, xp);
+
+        if (masteryOverflow > 0L) mastery.addXp(player, job, masteryOverflow);
 
         JobProgress result = new JobProgress(level, xp);
         plugin.getServer().getPluginManager().callEvent(new ProfessionXpGainEvent(player, job, amount, result));
