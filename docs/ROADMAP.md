@@ -15,7 +15,7 @@
 
 ## Current candidate
 - [x] v1.4.0 — Profession Contracts implementation
-- [ ] v1.4.0 CI `clean verify` on final HEAD
+- [x] v1.4.0 CI `clean verify`
 - [ ] Daily/Weekly deterministic assignment regression test
 - [ ] all five ProfessionActionEvent progress paths test
 - [ ] anti-exploit activities must not advance Contracts
