@@ -2,61 +2,45 @@
 
 **Choose Your Path, Shape Your Fate.**
 
-CdrJobs is a fantasy profession progression plugin for Paper servers. Current chapter: `v0.2.0 — Verdant Awakening`.
+Fantasy profession progression for Paper. Current chapter: `v0.3.0 — Blood Moon`.
 
 ## Released professions
+- ⛏ Runebound Delver — Miner
+- 🌿 Verdant Keeper — Farmer
+- ⚔ Bloodfang Stalker — Hunter
 
-### Runebound Delver — Miner
-- Lv.1–100
-- Natural ore progression
-- Persistent anti placed-ore exploit
-- Trial of Stone / Trial of the Deep
-- Runic Surge active ability
-- Heart of the Mountain awakening
+Planned before production:
+- 🪓 Ironbark Warden — Lumberjack
+- 🎣 Tidebound Angler — Fisher
 
-### Verdant Keeper — Farmer
-- Lv.1–100
-- Mature crop progression
-- Persistent location cooldown against rapid regrow/bonemeal reward spam
-- Rootbound auto-replant
-- Trial of Seed / Trial of Gaia
-- Verdant Bloom active ability
-- Verdant Dominion awakening
-
-## Shared progression
-- Global Fate Essence
-- One-time milestone claims per profession
-- Configurable XP curve
-- SQLite persistence with non-destructive migrations
-- GUI profession selection
+## Shared systems
+- Lv.1–100 per profession
+- Global scarce Fate Essence
+- Branching Path of Ascension
+- Profession Trials
+- Active abilities with persistent cooldowns
+- SQLite persistence and non-destructive migrations
 - PlaceholderAPI
-- Java 21 / Paper 1.21.4 API
+- Configurable XP curve and per-profession tuning
+- Admin testing commands
 
 ## Commands
 - `/cdrjobs`
 - `/cdrjobs stats [player]`
-- `/cdrjobs miner`
-- `/cdrjobs farmer`
-- `/cdrjobs trials [miner|farmer]`
-- `/cdrjobs ability [miner|farmer]`
+- `/cdrjobs <miner|farmer|hunter>`
+- `/cdrjobs trials <job>`
+- `/cdrjobs ability <job>`
 - `/cdrjobsadmin addxp <player> [job] <amount>`
 - `/cdrjobsadmin setlevel <player> [job] <level>`
 - `/cdrjobsadmin reset <player>`
 - `/cdrjobsadmin reload`
 
-## Documentation
-- [Roadmap](docs/ROADMAP.md)
-- [v0.1.0](docs/updates/v0.1.0.md)
-- [v0.1.1](docs/updates/v0.1.1.md)
-- [v0.1.2](docs/updates/v0.1.2.md)
-- [v0.2.0 — Verdant Awakening](docs/updates/v0.2.0.md)
-- [Changelog](CHANGELOG.md)
-
 ## Build
+Java 21 + Maven:
 ```bash
 mvn clean package
 ```
-Output: `target/CdrJobs-0.2.0.jar`
+Output: `target/CdrJobs-0.3.0.jar`
 
-## Road to production
-Hunter, Lumberjack and Fisher are implemented next. After all five professions compile and pass their server checklists, CdrJobs moves to a shared API/production-candidate phase before `v1.0.0`.
+## Documentation
+Every update is recorded in `CHANGELOG.md` and `docs/updates/`.

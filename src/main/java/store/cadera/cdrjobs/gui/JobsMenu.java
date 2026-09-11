@@ -1,124 +1,28 @@
 package store.cadera.cdrjobs.gui;
 
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
+import org.bukkit.*;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemFlag;
-import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import store.cadera.cdrjobs.CdrJobsPlugin;
-import store.cadera.cdrjobs.data.Database;
-import store.cadera.cdrjobs.data.ProfessionStore;
+import store.cadera.cdrjobs.data.*;
 import store.cadera.cdrjobs.model.*;
-import store.cadera.cdrjobs.service.FarmerService;
-import store.cadera.cdrjobs.service.LevelService;
-import store.cadera.cdrjobs.service.MinerTrialService;
+import store.cadera.cdrjobs.service.*;
 import store.cadera.cdrjobs.util.JobRanks;
-
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public final class JobsMenu {
-    public static final String MAIN_TITLE = ChatColor.DARK_AQUA + "CdrJobs • Path of Destiny";
-    public static final String MINER_TITLE = ChatColor.DARK_GRAY + "Path of Ascension • Miner";
-    public static final String TRIALS_TITLE = ChatColor.DARK_PURPLE + "Runebound • Profession Trials";
-    public static final String FARMER_TITLE = ChatColor.DARK_GREEN + "Path of Ascension • Farmer";
-    public static final String FARMER_TRIALS_TITLE = ChatColor.GREEN + "Verdant • Profession Trials";
-
-    private final CdrJobsPlugin plugin;
-    private final Database database;
-    private final ProfessionStore store;
-    private final LevelService levels;
-    private final MinerTrialService minerTrials;
-    private final FarmerService farmer;
-    private final NamespacedKey actionKey;
-    private final NamespacedKey skillKey;
-
-    public JobsMenu(CdrJobsPlugin plugin, Database database, ProfessionStore store, LevelService levels, MinerTrialService minerTrials, FarmerService farmer) {
-        this.plugin = plugin; this.database = database; this.store = store; this.levels = levels; this.minerTrials = minerTrials; this.farmer = farmer;
-        this.actionKey = new NamespacedKey(plugin, "menu_action"); this.skillKey = new NamespacedKey(plugin, "skill_id");
-    }
-    public NamespacedKey actionKey() { return actionKey; }
-    public NamespacedKey skillKey() { return skillKey; }
-
-    public void openMain(Player player) {
-        Inventory inv = Bukkit.createInventory(null, 27, MAIN_TITLE);
-        inv.setItem(4, item(Material.NETHER_STAR, ChatColor.LIGHT_PURPLE + "✦ Fate Essence: " + database.getFateEssence(player.getUniqueId()),
-                List.of(ChatColor.GRAY + "Global untuk seluruh profession.", ChatColor.GRAY + "Tidak semua path bisa dimaksimalkan."), null, null));
-        int[] slots = {10,12,14,16,22};
-        JobType[] jobs = JobType.values();
-        for (int i=0;i<jobs.length;i++) {
-            JobType job = jobs[i];
-            JobProgress p = database.getProgress(player.getUniqueId(), job);
-            if (!job.released()) {
-                inv.setItem(slots[i], item(job.icon(), ChatColor.DARK_GRAY + job.displayName(), List.of(ChatColor.GRAY + "Coming in a future CdrJobs chapter."), null, null));
-                continue;
-            }
-            long req = levels.xpRequiredForNextLevel(p.level());
-            List<String> lore = new ArrayList<>();
-            lore.add(ChatColor.GRAY + JobRanks.title(job, p.level()));
-            lore.add(ChatColor.WHITE + "Level: " + ChatColor.AQUA + p.level());
-            lore.add(ChatColor.WHITE + "XP: " + ChatColor.AQUA + (p.level() >= levels.maxLevel() ? "MAX" : p.xp()+"/"+req));
-            lore.add(""); lore.add(ChatColor.YELLOW + "Klik untuk membuka Path of Ascension.");
-            String action = job == JobType.MINER ? "open_miner" : "open_farmer";
-            inv.setItem(slots[i], item(job.icon(), ChatColor.AQUA + "✦ " + job.displayName(), lore, action, null));
-        }
-        player.openInventory(inv);
-    }
-
-    public void openMiner(Player player) {
-        Inventory inv = Bukkit.createInventory(null, 54, MINER_TITLE);
-        JobProgress progress = database.getProgress(player.getUniqueId(), JobType.MINER);
-        inv.setItem(4, item(Material.DIAMOND_PICKAXE, ChatColor.AQUA + "Runebound Delver", List.of(ChatColor.GRAY + JobRanks.title(JobType.MINER, progress.level()), ChatColor.WHITE+"Level: "+ChatColor.AQUA+progress.level(), ChatColor.LIGHT_PURPLE+"Fate Essence: "+database.getFateEssence(player.getUniqueId())), null, null));
-        int[] slots={10,19,21,23,28,30,49};
-        MinerSkill[] list={MinerSkill.STONEWHISPER,MinerSkill.RUNEBREAKER,MinerSkill.DEEPBORN,MinerSkill.RUNIC_SURGE,MinerSkill.GEMSEEKER,MinerSkill.ECHO_OF_DEPTH,MinerSkill.HEART_OF_MOUNTAIN};
-        for(int i=0;i<list.length;i++){
-            MinerSkill skill=list[i]; int rank=database.getSkillRank(player.getUniqueId(),skill);
-            List<String> lore=new ArrayList<>(); lore.add(ChatColor.GRAY+skill.description()); lore.add(""); lore.add(ChatColor.WHITE+"Rank: "+ChatColor.AQUA+rank+"/"+skill.maxRank()); lore.add(ChatColor.WHITE+"Requires Lv."+skill.requiredLevel()); lore.add(ChatColor.LIGHT_PURPLE+"Cost: "+skill.essenceCost()+" Fate Essence");
-            if(skill.prerequisite()!=null) lore.add(ChatColor.GRAY+"Requires "+skill.prerequisite().displayName()+" Rank "+skill.prerequisiteRank());
-            if(skill==MinerSkill.RUNIC_SURGE) lore.add((minerTrials.isStoneComplete(player)?ChatColor.GREEN:ChatColor.RED)+"Requires Trial of Stone");
-            if(skill==MinerSkill.HEART_OF_MOUNTAIN){ lore.add(ChatColor.GRAY+"Requires Gemseeker III + Echo III"); lore.add((minerTrials.isDeepComplete(player)?ChatColor.GREEN:ChatColor.RED)+"Requires Trial of the Deep"); }
-            lore.add(""); lore.add(rank>=skill.maxRank()?ChatColor.GREEN+"MAXIMUM RANK":ChatColor.YELLOW+"Klik untuk upgrade.");
-            inv.setItem(slots[i],item(skill.icon(),(rank>0?ChatColor.AQUA:ChatColor.GRAY)+"✦ "+skill.displayName(),lore,"upgrade_miner_skill",skill.name()));
-        }
-        inv.setItem(45,item(Material.ECHO_SHARD,ChatColor.LIGHT_PURPLE+"✦ Profession Trials",List.of(ChatColor.YELLOW+"Klik untuk melihat progress."),"open_miner_trials",null));
-        inv.setItem(53,item(Material.ARROW,ChatColor.YELLOW+"Kembali",List.of(),"back_main",null)); player.openInventory(inv);
-    }
-
-    public void openTrials(Player player) {
-        Inventory inv=Bukkit.createInventory(null,27,TRIALS_TITLE); MinerTrialProgress p=minerTrials.progress(player);
-        inv.setItem(11,item(Material.IRON_PICKAXE,ChatColor.AQUA+"✦ Trial of Stone",List.of(ChatColor.WHITE+"Natural ores: "+p.totalOres()+"/"+minerTrials.stoneTarget(), p.stoneComplete()?ChatColor.GREEN+"✓ COMPLETED":ChatColor.YELLOW+"Required for Runic Surge"),null,null));
-        inv.setItem(15,item(Material.SCULK_CATALYST,ChatColor.DARK_PURPLE+"✦ Trial of the Deep",List.of(ChatColor.WHITE+"Deep ores: "+p.deepOres()+"/"+minerTrials.deepTarget(),ChatColor.WHITE+"Rare ores: "+p.rareOres()+"/"+minerTrials.rareTarget(),ChatColor.WHITE+"Ancient Debris: "+p.ancientDebris()+"/"+minerTrials.ancientTarget(),p.deepComplete()?ChatColor.GREEN+"✓ COMPLETED":ChatColor.YELLOW+"Required for Heart of the Mountain"),null,null));
-        inv.setItem(22,item(Material.ARROW,ChatColor.YELLOW+"Kembali",List.of(),"back_miner",null)); player.openInventory(inv);
-    }
-
-    public void openFarmer(Player player) {
-        Inventory inv=Bukkit.createInventory(null,54,FARMER_TITLE); JobProgress p=database.getProgress(player.getUniqueId(),JobType.FARMER);
-        inv.setItem(4,item(Material.GOLDEN_HOE,ChatColor.GREEN+"Verdant Keeper",List.of(ChatColor.GRAY+JobRanks.title(JobType.FARMER,p.level()),ChatColor.WHITE+"Level: "+ChatColor.GREEN+p.level(),ChatColor.LIGHT_PURPLE+"Fate Essence: "+database.getFateEssence(player.getUniqueId())),null,null));
-        int[] slots={10,19,21,23,28,30,49}; FarmerSkill[] list=FarmerSkill.values();
-        for(int i=0;i<list.length;i++){
-            FarmerSkill skill=list[i]; int rank=store.getSkillRank(player.getUniqueId(),skill.key());
-            List<String> lore=new ArrayList<>(); lore.add(ChatColor.GRAY+skill.description()); lore.add(""); lore.add(ChatColor.WHITE+"Rank: "+ChatColor.GREEN+rank+"/"+skill.maxRank()); lore.add(ChatColor.WHITE+"Requires Lv."+skill.requiredLevel()); lore.add(ChatColor.LIGHT_PURPLE+"Cost: "+skill.essenceCost()+" Fate Essence");
-            if(skill.prerequisite()!=null) lore.add(ChatColor.GRAY+"Requires "+skill.prerequisite().displayName()+" Rank "+skill.prerequisiteRank());
-            if(skill==FarmerSkill.VERDANT_BLOOM) lore.add((farmer.seedTrialComplete(player)?ChatColor.GREEN:ChatColor.RED)+"Requires Trial of Seed");
-            if(skill==FarmerSkill.VERDANT_DOMINION){ lore.add(ChatColor.GRAY+"Requires Blessing of Gaia III + Spirit III"); lore.add((farmer.gaiaTrialComplete(player)?ChatColor.GREEN:ChatColor.RED)+"Requires Trial of Gaia"); }
-            lore.add(""); lore.add(rank>=skill.maxRank()?ChatColor.GREEN+"MAXIMUM RANK":ChatColor.YELLOW+"Klik untuk upgrade.");
-            inv.setItem(slots[i],item(skill.icon(),(rank>0?ChatColor.GREEN:ChatColor.GRAY)+"✦ "+skill.displayName(),lore,"upgrade_farmer_skill",skill.name()));
-        }
-        inv.setItem(45,item(Material.FLOWERING_AZALEA,ChatColor.GREEN+"✦ Profession Trials",List.of(ChatColor.YELLOW+"Klik untuk melihat progress."),"open_farmer_trials",null));
-        inv.setItem(53,item(Material.ARROW,ChatColor.YELLOW+"Kembali",List.of(),"back_main",null)); player.openInventory(inv);
-    }
-
-    public void openFarmerTrials(Player player) {
-        Inventory inv=Bukkit.createInventory(null,27,FARMER_TRIALS_TITLE);
-        inv.setItem(11,item(Material.WHEAT,ChatColor.GREEN+"✦ Trial of Seed",List.of(ChatColor.WHITE+"Mature harvests: "+farmer.harvests(player)+"/"+farmer.seedTarget(),farmer.seedTrialComplete(player)?ChatColor.GREEN+"✓ COMPLETED":ChatColor.YELLOW+"Required for Verdant Bloom"),null,null));
-        inv.setItem(15,item(Material.ENCHANTED_GOLDEN_APPLE,ChatColor.DARK_GREEN+"✦ Trial of Gaia",List.of(ChatColor.WHITE+"Harvests: "+farmer.harvests(player)+"/"+farmer.gaiaHarvestTarget(),ChatColor.WHITE+"Rare harvests: "+farmer.rareHarvests(player)+"/"+farmer.gaiaRareTarget(),farmer.gaiaTrialComplete(player)?ChatColor.GREEN+"✓ COMPLETED":ChatColor.YELLOW+"Required for Verdant Dominion"),null,null));
-        inv.setItem(22,item(Material.ARROW,ChatColor.YELLOW+"Kembali",List.of(),"back_farmer",null)); player.openInventory(inv);
-    }
-
-    private ItemStack item(Material material,String name,List<String> lore,String action,String skillId){ ItemStack item=new ItemStack(material); ItemMeta meta=item.getItemMeta(); meta.setDisplayName(name); meta.setLore(lore); meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES); if(action!=null)meta.getPersistentDataContainer().set(actionKey,PersistentDataType.STRING,action); if(skillId!=null)meta.getPersistentDataContainer().set(skillKey,PersistentDataType.STRING,skillId); item.setItemMeta(meta); return item; }
+    public static final String MAIN_TITLE=ChatColor.DARK_AQUA+"CdrJobs • Path of Destiny",MINER_TITLE=ChatColor.DARK_GRAY+"Path of Ascension • Miner",TRIALS_TITLE=ChatColor.DARK_PURPLE+"Runebound • Profession Trials",FARMER_TITLE=ChatColor.DARK_GREEN+"Path of Ascension • Farmer",FARMER_TRIALS_TITLE=ChatColor.GREEN+"Verdant • Profession Trials",HUNTER_TITLE=ChatColor.DARK_RED+"Path of Ascension • Hunter",HUNTER_TRIALS_TITLE=ChatColor.RED+"Bloodfang • Profession Trials";
+    private final Database db;private final ProfessionStore store;private final LevelService levels;private final MinerTrialService minerTrials;private final FarmerService farmer;private final HunterService hunter;private final NamespacedKey actionKey,skillKey;
+    public JobsMenu(CdrJobsPlugin p,Database db,ProfessionStore store,LevelService levels,MinerTrialService minerTrials,FarmerService farmer,HunterService hunter){this.db=db;this.store=store;this.levels=levels;this.minerTrials=minerTrials;this.farmer=farmer;this.hunter=hunter;actionKey=new NamespacedKey(p,"menu_action");skillKey=new NamespacedKey(p,"skill_id");}
+    public NamespacedKey actionKey(){return actionKey;}public NamespacedKey skillKey(){return skillKey;}
+    public void openMain(Player p){Inventory inv=Bukkit.createInventory(null,27,MAIN_TITLE);inv.setItem(4,item(Material.NETHER_STAR,ChatColor.LIGHT_PURPLE+"✦ Fate Essence: "+db.getFateEssence(p.getUniqueId()),List.of(ChatColor.GRAY+"Global untuk seluruh profession.",ChatColor.GRAY+"Setiap pilihan menentukan path-mu."),null,null));int[]slots={10,12,14,16,22};for(int i=0;i<JobType.values().length;i++){JobType j=JobType.values()[i];JobProgress pr=db.getProgress(p.getUniqueId(),j);if(!j.released()){inv.setItem(slots[i],item(j.icon(),ChatColor.DARK_GRAY+j.displayName(),List.of(ChatColor.GRAY+"Coming in a future chapter."),null,null));continue;}String a=switch(j){case MINER->"open_miner";case FARMER->"open_farmer";case HUNTER->"open_hunter";default->null;};inv.setItem(slots[i],item(j.icon(),ChatColor.AQUA+"✦ "+j.displayName(),List.of(ChatColor.GRAY+JobRanks.title(j,pr.level()),ChatColor.WHITE+"Level: "+ChatColor.AQUA+pr.level(),ChatColor.WHITE+"XP: "+ChatColor.AQUA+(pr.level()>=levels.maxLevel()?"MAX":pr.xp()+"/"+levels.xpRequiredForNextLevel(pr.level())),"",ChatColor.YELLOW+"Klik untuk membuka Path of Ascension."),a,null));}p.openInventory(inv);}
+    public void openMiner(Player p){Inventory inv=Bukkit.createInventory(null,54,MINER_TITLE);JobProgress pr=db.getProgress(p.getUniqueId(),JobType.MINER);inv.setItem(4,item(Material.DIAMOND_PICKAXE,ChatColor.AQUA+"Runebound Delver",head(JobType.MINER,pr,p),null,null));int[]s={10,19,21,23,28,30,49};MinerSkill[]list={MinerSkill.STONEWHISPER,MinerSkill.RUNEBREAKER,MinerSkill.DEEPBORN,MinerSkill.RUNIC_SURGE,MinerSkill.GEMSEEKER,MinerSkill.ECHO_OF_DEPTH,MinerSkill.HEART_OF_MOUNTAIN};for(int i=0;i<list.length;i++){MinerSkill x=list[i];int r=db.getSkillRank(p.getUniqueId(),x);List<String>l=skillLore(x.description(),r,x.maxRank(),x.requiredLevel(),x.essenceCost());if(x.prerequisite()!=null)l.add(ChatColor.GRAY+"Requires "+x.prerequisite().displayName()+" "+x.prerequisiteRank());if(x==MinerSkill.RUNIC_SURGE)l.add((minerTrials.isStoneComplete(p)?ChatColor.GREEN:ChatColor.RED)+"Requires Trial of Stone");if(x==MinerSkill.HEART_OF_MOUNTAIN)l.add((minerTrials.isDeepComplete(p)?ChatColor.GREEN:ChatColor.RED)+"Requires Trial of the Deep");inv.setItem(s[i],item(x.icon(),(r>0?ChatColor.AQUA:ChatColor.GRAY)+"✦ "+x.displayName(),l,"upgrade_miner_skill",x.name()));}inv.setItem(45,item(Material.ECHO_SHARD,ChatColor.LIGHT_PURPLE+"✦ Profession Trials",List.of(ChatColor.YELLOW+"Klik untuk progress."),"open_miner_trials",null));inv.setItem(53,back("back_main"));p.openInventory(inv);}
+    public void openTrials(Player p){Inventory inv=Bukkit.createInventory(null,27,TRIALS_TITLE);MinerTrialProgress x=minerTrials.progress(p);inv.setItem(11,item(Material.IRON_PICKAXE,ChatColor.AQUA+"✦ Trial of Stone",List.of(ChatColor.WHITE+"Natural ores: "+x.totalOres()+"/"+minerTrials.stoneTarget(),x.stoneComplete()?ChatColor.GREEN+"✓ COMPLETED":ChatColor.YELLOW+"Required for Runic Surge"),null,null));inv.setItem(15,item(Material.SCULK_CATALYST,ChatColor.DARK_PURPLE+"✦ Trial of the Deep",List.of(ChatColor.WHITE+"Deep: "+x.deepOres()+"/"+minerTrials.deepTarget(),ChatColor.WHITE+"Rare: "+x.rareOres()+"/"+minerTrials.rareTarget(),ChatColor.WHITE+"Debris: "+x.ancientDebris()+"/"+minerTrials.ancientTarget(),x.deepComplete()?ChatColor.GREEN+"✓ COMPLETED":ChatColor.YELLOW+"Required for Heart"),null,null));inv.setItem(22,back("back_miner"));p.openInventory(inv);}
+    public void openFarmer(Player p){Inventory inv=Bukkit.createInventory(null,54,FARMER_TITLE);JobProgress pr=db.getProgress(p.getUniqueId(),JobType.FARMER);inv.setItem(4,item(Material.GOLDEN_HOE,ChatColor.GREEN+"Verdant Keeper",head(JobType.FARMER,pr,p),null,null));int[]s={10,19,21,23,28,30,49};FarmerSkill[]list=FarmerSkill.values();for(int i=0;i<list.length;i++){FarmerSkill x=list[i];int r=store.getSkillRank(p.getUniqueId(),x.key());List<String>l=skillLore(x.description(),r,x.maxRank(),x.requiredLevel(),x.essenceCost());if(x.prerequisite()!=null)l.add(ChatColor.GRAY+"Requires "+x.prerequisite().displayName()+" "+x.prerequisiteRank());if(x==FarmerSkill.VERDANT_BLOOM)l.add((farmer.seedTrialComplete(p)?ChatColor.GREEN:ChatColor.RED)+"Requires Trial of Seed");if(x==FarmerSkill.VERDANT_DOMINION)l.add((farmer.gaiaTrialComplete(p)?ChatColor.GREEN:ChatColor.RED)+"Requires Trial of Gaia");inv.setItem(s[i],item(x.icon(),(r>0?ChatColor.GREEN:ChatColor.GRAY)+"✦ "+x.displayName(),l,"upgrade_farmer_skill",x.name()));}inv.setItem(45,item(Material.FLOWERING_AZALEA,ChatColor.GREEN+"✦ Profession Trials",List.of(ChatColor.YELLOW+"Klik untuk progress."),"open_farmer_trials",null));inv.setItem(53,back("back_main"));p.openInventory(inv);}
+    public void openFarmerTrials(Player p){Inventory inv=Bukkit.createInventory(null,27,FARMER_TRIALS_TITLE);inv.setItem(11,item(Material.WHEAT,ChatColor.GREEN+"✦ Trial of Seed",List.of(ChatColor.WHITE+"Harvests: "+farmer.harvests(p)+"/"+farmer.seedTarget(),farmer.seedTrialComplete(p)?ChatColor.GREEN+"✓ COMPLETED":ChatColor.YELLOW+"Required for Verdant Bloom"),null,null));inv.setItem(15,item(Material.ENCHANTED_GOLDEN_APPLE,ChatColor.DARK_GREEN+"✦ Trial of Gaia",List.of(ChatColor.WHITE+"Harvests: "+farmer.harvests(p)+"/"+farmer.gaiaHarvestTarget(),ChatColor.WHITE+"Rare: "+farmer.rareHarvests(p)+"/"+farmer.gaiaRareTarget(),farmer.gaiaTrialComplete(p)?ChatColor.GREEN+"✓ COMPLETED":ChatColor.YELLOW+"Required for Dominion"),null,null));inv.setItem(22,back("back_farmer"));p.openInventory(inv);}
+    public void openHunter(Player p){Inventory inv=Bukkit.createInventory(null,54,HUNTER_TITLE);JobProgress pr=db.getProgress(p.getUniqueId(),JobType.HUNTER);inv.setItem(4,item(Material.IRON_SWORD,ChatColor.RED+"Bloodfang Stalker",head(JobType.HUNTER,pr,p),null,null));int[]s={10,19,21,23,28,30,49};HunterSkill[]list=HunterSkill.values();for(int i=0;i<list.length;i++){HunterSkill x=list[i];int r=store.getSkillRank(p.getUniqueId(),x.key());List<String>l=skillLore(x.description(),r,x.maxRank(),x.requiredLevel(),x.essenceCost());if(x.prerequisite()!=null)l.add(ChatColor.GRAY+"Requires "+x.prerequisite().displayName()+" "+x.prerequisiteRank());if(x==HunterSkill.CRIMSON_HUNT)l.add((hunter.fangComplete(p)?ChatColor.GREEN:ChatColor.RED)+"Requires Trial of Fang");if(x==HunterSkill.APEX_PREDATOR)l.add((hunter.moonComplete(p)?ChatColor.GREEN:ChatColor.RED)+"Requires Trial of Crimson Moon");inv.setItem(s[i],item(x.icon(),(r>0?ChatColor.RED:ChatColor.GRAY)+"✦ "+x.displayName(),l,"upgrade_hunter_skill",x.name()));}inv.setItem(45,item(Material.WITHER_SKELETON_SKULL,ChatColor.RED+"✦ Profession Trials",List.of(ChatColor.YELLOW+"Klik untuk progress."),"open_hunter_trials",null));inv.setItem(53,back("back_main"));p.openInventory(inv);}
+    public void openHunterTrials(Player p){Inventory inv=Bukkit.createInventory(null,27,HUNTER_TRIALS_TITLE);inv.setItem(11,item(Material.BONE,ChatColor.RED+"✦ Trial of Fang",List.of(ChatColor.WHITE+"Kills: "+hunter.kills(p)+"/"+hunter.fangTarget(),hunter.fangComplete(p)?ChatColor.GREEN+"✓ COMPLETED":ChatColor.YELLOW+"Required for Crimson Hunt"),null,null));inv.setItem(15,item(Material.ECHO_SHARD,ChatColor.DARK_RED+"✦ Trial of the Crimson Moon",List.of(ChatColor.WHITE+"Kills: "+hunter.kills(p)+"/"+hunter.moonKillTarget(),ChatColor.WHITE+"Night kills: "+hunter.nightKills(p)+"/"+hunter.moonNightTarget(),ChatColor.WHITE+"Dangerous prey: "+hunter.dangerousKills(p)+"/"+hunter.moonDangerTarget(),hunter.moonComplete(p)?ChatColor.GREEN+"✓ COMPLETED":ChatColor.YELLOW+"Required for Apex Predator"),null,null));inv.setItem(22,back("back_hunter"));p.openInventory(inv);}
+    private List<String>head(JobType j,JobProgress p,Player player){return List.of(ChatColor.GRAY+JobRanks.title(j,p.level()),ChatColor.WHITE+"Level: "+ChatColor.AQUA+p.level(),ChatColor.LIGHT_PURPLE+"Fate Essence: "+db.getFateEssence(player.getUniqueId()));}private List<String>skillLore(String d,int r,int max,int lv,int cost){List<String>l=new ArrayList<>();l.add(ChatColor.GRAY+d);l.add("");l.add(ChatColor.WHITE+"Rank: "+ChatColor.AQUA+r+"/"+max);l.add(ChatColor.WHITE+"Requires Lv."+lv);l.add(ChatColor.LIGHT_PURPLE+"Cost: "+cost+" Fate Essence");l.add("");l.add(r>=max?ChatColor.GREEN+"MAXIMUM RANK":ChatColor.YELLOW+"Klik untuk upgrade.");return l;}private ItemStack back(String a){return item(Material.ARROW,ChatColor.YELLOW+"Kembali",List.of(),a,null);}private ItemStack item(Material m,String n,List<String>l,String a,String s){ItemStack i=new ItemStack(m);ItemMeta meta=i.getItemMeta();meta.setDisplayName(n);meta.setLore(l);meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);if(a!=null)meta.getPersistentDataContainer().set(actionKey,PersistentDataType.STRING,a);if(s!=null)meta.getPersistentDataContainer().set(skillKey,PersistentDataType.STRING,s);i.setItemMeta(meta);return i;}
 }
