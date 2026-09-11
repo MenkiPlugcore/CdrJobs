@@ -5,6 +5,7 @@ import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import store.cadera.cdrjobs.api.CdrJobsAPI;
 import store.cadera.cdrjobs.command.AdminCommand;
@@ -92,6 +93,7 @@ public final class CdrJobsPlugin extends JavaPlugin {
 
         api = new CdrJobsAPI(database, professionStore, progression, profiles, mastery,
                 contracts, resonance, leaderboardService);
+        getServer().getServicesManager().register(CdrJobsAPI.class, api, this, ServicePriority.Normal);
 
         JobsMenu menu = new JobsMenu(this, database, professionStore, levelService, minerTrials,
                 farmer, hunter, lumberjack, fisher, profiles);
@@ -130,6 +132,7 @@ public final class CdrJobsPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (api != null) getServer().getServicesManager().unregister(CdrJobsAPI.class, api);
         api = null;
         try { if (rebirthStore != null) rebirthStore.close(); }
         catch (SQLException exception) { getLogger().warning(exception.getMessage()); }
