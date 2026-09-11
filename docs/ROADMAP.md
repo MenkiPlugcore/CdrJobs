@@ -10,20 +10,21 @@
 - [x] v1.0.1–v1.0.5 — Stability, Hunter safety, admin/debug hardening
 - [x] v1.1.0 — Adventurer Profile implementation + CI
 - [x] v1.1.1 — Leaderboard & Profile QoL implementation + CI
+- [x] v1.2.0 — Rite of Rebirth implementation + CI
 
 ## Current candidate
-- [x] v1.2.0 — Rite of Rebirth implementation
-- [x] v1.2.0 CI `clean verify`
-- [ ] Rebirth refund/fee/cooldown regression test across all five professions
-- [ ] double-click / repeated-confirm anti-dupe test
-- [ ] restart/persistence test for Rebirth cooldown
-- [ ] Vault-off and Vault-fee compatibility test
-- [ ] confirm level/XP/Trial/statistics/milestone ledger remain unchanged after Rebirth
-- [ ] re-run v1.1.0/v1.1.1 Profile + leaderboard regression matrix
-- [ ] promote v1.2.0 to stable only after real-server validation
+- [x] v1.3.0 — Profession Mastery implementation
+- [ ] v1.3.0 CI `clean verify`
+- [ ] Level 100 XP routing + overflow regression test across all five professions
+- [ ] Mastery I–X curve/config reload test
+- [ ] restart/persistence test for Mastery XP
+- [ ] Mastery leaderboard/cache test
+- [ ] PlaceholderAPI Mastery regression test
+- [ ] Rebirth must preserve Mastery; resetjob/full reset must clear affected Mastery
+- [ ] re-run Five Paths progression + anti-exploit regression matrix
+- [ ] promote v1.3.0 to stable only after real-server validation
 
 ## Later standalone roadmap
-- [ ] v1.3.0 — Profession Mastery
 - [ ] v1.4.0 — Profession Contracts
 - [ ] v1.5.0 — Fate Resonance
 - [ ] v1.6.0 — Public API v2
