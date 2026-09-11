@@ -13,7 +13,7 @@
 
 ## Current candidate
 - [x] v1.2.0 — Rite of Rebirth implementation
-- [ ] v1.2.0 CI `clean verify` on final docs/source HEAD
+- [x] v1.2.0 CI `clean verify`
 - [ ] Rebirth refund/fee/cooldown regression test across all five professions
 - [ ] double-click / repeated-confirm anti-dupe test
 - [ ] restart/persistence test for Rebirth cooldown
