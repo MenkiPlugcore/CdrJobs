@@ -85,13 +85,14 @@ public final class CdrJobsPlugin extends JavaPlugin {
         VaultEconomyHook vault = new VaultEconomyHook(this);
         RebirthService rebirth = new RebirthService(this, database, rebirthStore, vault, profiles);
         ContractService contracts = new ContractService(this, database, professionStore, progression);
+        FateResonanceService resonance = new FateResonanceService(this, database, mastery);
 
         JobsMenu menu = new JobsMenu(this, database, professionStore, levelService, minerTrials,
                 farmer, hunter, lumberjack, fisher, profiles);
         RebirthMenu rebirthMenu = new RebirthMenu(this, rebirth);
         JobsCommand jobsCommand = new JobsCommand(this, database, menu, rebirthMenu, levelService, minerAbility,
-                farmer, hunter, lumberjack, fisher, leaderboardService, mastery, contracts);
-        AdminCommand adminCommand = new AdminCommand(this, database, professionStore, progression, hunter, rebirth, mastery);
+                farmer, hunter, lumberjack, fisher, leaderboardService, mastery, contracts, resonance);
+        AdminCommand adminCommand = new AdminCommand(this, database, professionStore, progression, hunter, rebirth, mastery, resonance);
         registerCommand("cdrjobs", jobsCommand, jobsCommand);
         registerCommand("cdrjobsadmin", adminCommand, adminCommand);
 
@@ -109,9 +110,9 @@ public final class CdrJobsPlugin extends JavaPlugin {
         }
 
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
-            new CdrJobsExpansion(this, database, professionStore, levelService, profiles, mastery, contracts).register();
+            new CdrJobsExpansion(this, database, professionStore, levelService, profiles, mastery, contracts, resonance).register();
         }
-        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — PROFESSION CONTRACTS enabled.");
+        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — FATE RESONANCE enabled.");
     }
 
     @Override
