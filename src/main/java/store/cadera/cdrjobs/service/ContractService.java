@@ -3,6 +3,8 @@ package store.cadera.cdrjobs.service;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import store.cadera.cdrjobs.CdrJobsPlugin;
+import store.cadera.cdrjobs.api.event.ContractClaimEvent;
+import store.cadera.cdrjobs.api.event.ContractCompleteEvent;
 import store.cadera.cdrjobs.data.Database;
 import store.cadera.cdrjobs.data.ProfessionStore;
 import store.cadera.cdrjobs.model.JobType;
@@ -49,11 +51,14 @@ public final class ContractService {
         for (Cadence cadence : Cadence.values()) {
             ContractView current = view(player.getUniqueId(), cadence);
             if (current.claimed() || current.complete() || current.definition().job() != job) continue;
-            long next = Math.min(current.definition().target(), current.progress() + amount);
+            long next = saturatingAdd(current.progress(), amount);
+            next = Math.min(current.definition().target(), next);
             store.setCounter(player.getUniqueId(), STORE_JOB, key(cadence, "progress"), next);
             if (next >= current.definition().target()) {
                 player.sendMessage(Colors.color(plugin.prefix() + "&6✦ &e" + cadence.display() + " Contract Complete &6✦ &7" + current.definition().name() + " &7— gunakan &f/cdrjobs contracts claim " + cadence.id() + "&7."));
                 player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.7f, 1.15f);
+                plugin.getServer().getPluginManager().callEvent(new ContractCompleteEvent(
+                        player, cadence.id(), current.definition().id(), current.definition().job(), current.definition().target()));
             } else if (plugin.getConfig().getBoolean("contracts.progress-actionbar", false)) {
                 player.sendActionBar(Colors.color("&b" + cadence.display() + " Contract &7" + next + "/" + current.definition().target()));
             }
@@ -63,22 +68,32 @@ public final class ContractService {
     public ClaimResult claim(Player player, Cadence cadence) {
         if (!enabled()) return ClaimResult.DISABLED;
         synchronized (this) {
-            ContractView current = view(player.getUniqueId(), cadence);
+            UUID uuid = player.getUniqueId();
+            ContractView current = view(uuid, cadence);
             if (current.claimed()) return ClaimResult.ALREADY_CLAIMED;
             if (!current.complete()) return ClaimResult.INCOMPLETE;
 
-            // Mark first: reward is at-most-once even if a server/process failure occurs during delivery.
-            store.setCounter(player.getUniqueId(), STORE_JOB, key(cadence, "claimed"), 1L);
             ContractDefinition def = current.definition();
             try {
-                if (def.rewardFate() > 0) database.addFateEssence(player.getUniqueId(), def.rewardFate());
-                if (def.rewardXp() > 0L) progression.addXp(player, def.job(), def.rewardXp());
+                // Component checkpoints make ordinary retry after an exception recoverable without
+                // re-paying a component that was already delivered successfully.
+                if (def.rewardFate() > 0 && store.getCounter(uuid, STORE_JOB, key(cadence, "reward_fate_paid")) == 0L) {
+                    database.addFateEssence(uuid, def.rewardFate());
+                    store.setCounter(uuid, STORE_JOB, key(cadence, "reward_fate_paid"), 1L);
+                }
+                if (def.rewardXp() > 0L && store.getCounter(uuid, STORE_JOB, key(cadence, "reward_xp_paid")) == 0L) {
+                    progression.addXp(player, def.job(), def.rewardXp());
+                    store.setCounter(uuid, STORE_JOB, key(cadence, "reward_xp_paid"), 1L);
+                }
+                store.setCounter(uuid, STORE_JOB, key(cadence, "claimed"), 1L);
             } catch (RuntimeException exception) {
                 plugin.getLogger().severe("Contract reward delivery failed for " + player.getName() + " / " + cadence + ": " + exception.getMessage());
                 return ClaimResult.REWARD_ERROR;
             }
 
             player.sendMessage(Colors.color(plugin.prefix() + "&aContract claimed: &f" + def.name() + " &8— &b+" + def.rewardXp() + " " + def.job().displayName() + " XP &8• &d+" + def.rewardFate() + " Fate Essence"));
+            plugin.getServer().getPluginManager().callEvent(new ContractClaimEvent(
+                    player, cadence.id(), def.id(), def.job(), def.rewardXp(), def.rewardFate()));
             return ClaimResult.SUCCESS;
         }
     }
@@ -105,6 +120,8 @@ public final class ContractService {
 
             store.setCounter(uuid, STORE_JOB, key(cadence, "salt"), salt);
             store.setCounter(uuid, STORE_JOB, key(cadence, "progress"), 0L);
+            store.setCounter(uuid, STORE_JOB, key(cadence, "reward_fate_paid"), 0L);
+            store.setCounter(uuid, STORE_JOB, key(cadence, "reward_xp_paid"), 0L);
             store.incrementCounter(uuid, STORE_JOB, key(cadence, "rerolls"), 1L);
             player.sendMessage(Colors.color(plugin.prefix() + "&e" + cadence.display() + " Contract rerolled &7→ &f" + replacement.name()));
             return RerollResult.SUCCESS;
@@ -118,6 +135,8 @@ public final class ContractService {
         store.setCounter(uuid, STORE_JOB, key(cadence, "progress"), 0L);
         store.setCounter(uuid, STORE_JOB, key(cadence, "claimed"), 0L);
         store.setCounter(uuid, STORE_JOB, key(cadence, "rerolls"), 0L);
+        store.setCounter(uuid, STORE_JOB, key(cadence, "reward_fate_paid"), 0L);
+        store.setCounter(uuid, STORE_JOB, key(cadence, "reward_xp_paid"), 0L);
     }
 
     public List<String> lines(UUID uuid) {
@@ -196,6 +215,15 @@ public final class ContractService {
         return new ContractDefinition("fallback-weekly", "Weekly Miner Commission", cadence, JobType.MINER, 750L, 2500L, 1);
     }
 
+    private ContractDefinition select(UUID uuid, Cadence cadence, long cycle, int salt) {
+        return select(uuid, cadence, cycle, (long) salt);
+    }
+
+    private long saturatingAdd(long current, long amount) {
+        if (amount > 0L && current > Long.MAX_VALUE - amount) return Long.MAX_VALUE;
+        return current + amount;
+    }
+
     private String key(Cadence cadence, String suffix) { return cadence.id() + "_" + suffix; }
     private int safeInt(long value) { return (int) Math.max(0L, Math.min(Integer.MAX_VALUE, value)); }
     private String pretty(String id) {
@@ -220,7 +248,11 @@ public final class ContractService {
     public record ContractDefinition(String id, String name, Cadence cadence, JobType job, long target, long rewardXp, int rewardFate) {}
     public record ContractView(Cadence cadence, long cycle, ContractDefinition definition, long progress, boolean claimed, int usedRerolls, int rerollLimit) {
         public boolean complete() { return progress >= definition.target(); }
-        public int percent() { return (int) Math.min(100L, (progress * 100L) / Math.max(1L, definition.target())); }
+        public int percent() {
+            if (definition.target() <= 0L || progress <= 0L) return 0;
+            if (progress >= definition.target()) return 100;
+            return (int) Math.max(0D, Math.min(100D, (progress * 100.0D) / definition.target()));
+        }
     }
     public enum ClaimResult { SUCCESS, DISABLED, INCOMPLETE, ALREADY_CLAIMED, REWARD_ERROR }
     public enum RerollResult { SUCCESS, DISABLED, LOCKED, NO_REROLLS, NO_ALTERNATIVE }
