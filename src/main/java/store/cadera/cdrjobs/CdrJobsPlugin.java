@@ -70,7 +70,8 @@ public final class CdrJobsPlugin extends JavaPlugin {
         }
 
         levelService = new LevelService(this);
-        ProgressionService progression = new ProgressionService(this, database, levelService);
+        MasteryService mastery = new MasteryService(this, professionStore);
+        ProgressionService progression = new ProgressionService(this, database, levelService, mastery);
         api = new CdrJobsAPI(database, progression);
 
         MinerTrialService minerTrials = new MinerTrialService(this, database);
@@ -88,8 +89,8 @@ public final class CdrJobsPlugin extends JavaPlugin {
                 farmer, hunter, lumberjack, fisher, profiles);
         RebirthMenu rebirthMenu = new RebirthMenu(this, rebirth);
         JobsCommand jobsCommand = new JobsCommand(this, database, menu, rebirthMenu, levelService, minerAbility,
-                farmer, hunter, lumberjack, fisher, leaderboardService);
-        AdminCommand adminCommand = new AdminCommand(this, database, professionStore, progression, hunter, rebirth);
+                farmer, hunter, lumberjack, fisher, leaderboardService, mastery);
+        AdminCommand adminCommand = new AdminCommand(this, database, professionStore, progression, hunter, rebirth, mastery);
         registerCommand("cdrjobs", jobsCommand, jobsCommand);
         registerCommand("cdrjobsadmin", adminCommand, adminCommand);
 
@@ -106,9 +107,9 @@ public final class CdrJobsPlugin extends JavaPlugin {
         }
 
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
-            new CdrJobsExpansion(this, database, professionStore, levelService, profiles).register();
+            new CdrJobsExpansion(this, database, professionStore, levelService, profiles, mastery).register();
         }
-        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — RITE OF REBIRTH enabled.");
+        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — PROFESSION MASTERY enabled.");
     }
 
     @Override
