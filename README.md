@@ -2,42 +2,43 @@
 
 **Choose Your Path, Shape Your Fate.**
 
-Current development version: `v0.5.0 — Call of the Deep`.
+Current production candidate: `v0.9.0 — Adventurer API`.
 
-## Five standalone professions
+## Professions
 - ⛏ Runebound Delver — Miner
 - 🌿 Verdant Keeper — Farmer
 - ⚔ Bloodfang Stalker — Hunter
 - 🪓 Ironbark Warden — Lumberjack
 - 🎣 Tidebound Angler — Fisher
 
-Every profession has Lv.1–100 progression, fantasy rank titles, a branching Path of Ascension, trials, an active ability and an awakened endgame path.
+Each profession has Lv.1–100 progression, fantasy ranks, Path of Ascension, scarce global Fate Essence, profession trials, an active ability and awakened endgame path.
 
-## Shared systems
-- Global scarce Fate Essence
-- One-time Fate milestone claims per profession
-- Configurable XP curve and profession multipliers
-- SQLite persistence with non-destructive table creation
-- Profession-specific anti-exploit mechanics
-- GUI navigation
-- PlaceholderAPI (optional)
-- Admin testing commands
+## Production systems
+- SQLite persistence + non-destructive schema creation
+- one-time Fate milestone claim ledger
+- profession-specific anti-exploit rules
+- configurable XP curve/multipliers
+- PlaceholderAPI optional
+- public Java API + Bukkit events
+- GitHub Actions `clean verify`
+- automatic CI JAR artifact
+- `/cdrjobsadmin diagnose`
+
+## Server testing
+See [`docs/TESTING.md`](docs/TESTING.md).
+
+## Developer API
+See [`docs/API.md`](docs/API.md).
 
 ## Commands
-- `/cdrjobs`
-- `/cdrjobs stats [player]`
-- `/cdrjobs <miner|farmer|hunter|lumberjack|fisher>`
-- `/cdrjobs trials <job>`
-- `/cdrjobs ability <job>`
-- `/cdrjobsadmin addxp <player> [job] <amount>`
-- `/cdrjobsadmin setlevel <player> [job] <level>`
-- `/cdrjobsadmin reset <player>`
-- `/cdrjobsadmin reload`
+`/cdrjobs`, `/cdrjobs stats`, `/cdrjobs <job>`, `/cdrjobs trials <job>`, `/cdrjobs ability <job>`
+
+Admin: `/cdrjobsadmin diagnose`, `reload`, `reset`, `addxp`, `setlevel`.
 
 ## Build
-Java 21, Paper API 1.21.4.
+Requires Java 21 and Paper API 1.21.4.
 ```bash
-mvn clean package
+mvn clean verify
 ```
 
-Next: `v0.9.0` production candidate hardening + public API. MENKIESTESParty integration starts only after standalone `v1.0.0`.
+MENKIESTESParty is intentionally not a dependency in the standalone release. Integration begins after v1.0.0.

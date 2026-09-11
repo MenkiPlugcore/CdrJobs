@@ -19,10 +19,12 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - name: Build
-        run: mvn -B clean package
+      - name: Verify
+        run: mvn -B clean verify
       - name: Upload plugin jar
         uses: actions/upload-artifact@v4
         with:
-          name: CdrJobs-0.1.0
-          path: target/CdrJobs-0.1.0.jar
+          name: CdrJobs-production-candidate
+          path: target/CdrJobs-*.jar
+          if-no-files-found: error
+          retention-days: 14
