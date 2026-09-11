@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.2 — Hunter Progression Hotfix
+- Hunter progression is now mob-based; killing players does not grant Hunter XP or Trial progress.
+- Any non-player living mob can grant Hunter XP.
+- Mobs listed in `hunter.xp` keep their custom XP values.
+- Unlisted mobs use configurable `hunter.fallback-mob-xp` (default `3`).
+- Existing spawner and breeding anti-exploit exclusions remain active.
+- Armor Stands are excluded from Hunter progression.
+- Fixed the practical issue where killing an unlisted mob resulted in no Hunter XP at all.
+- No database schema change; schema remains `9`.
+
 ## 1.0.1 — Stability Patch
 - Added `/cdrjobsadmin inspect <player>` for five-profession progression inspection.
 - Hardened admin command syntax and numeric validation.
