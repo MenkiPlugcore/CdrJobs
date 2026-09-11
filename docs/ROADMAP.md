@@ -1,6 +1,6 @@
 # CdrJobs Roadmap
 
-## Complete
+## Complete implementation + CI
 - [x] Miner — Runebound Delver
 - [x] Farmer — Verdant Keeper
 - [x] Hunter — Bloodfang Stalker
@@ -8,29 +8,47 @@
 - [x] Fisher — Tidebound Angler
 - [x] v1.0.0 — Five Paths standalone production baseline
 - [x] v1.0.1–v1.0.5 — Stability, Hunter safety, admin/debug hardening
-- [x] v1.1.0 — Adventurer Profile implementation + CI
-- [x] v1.1.1 — Leaderboard & Profile QoL implementation + CI
-- [x] v1.2.0 — Rite of Rebirth implementation + CI
-- [x] v1.3.0 — Profession Mastery implementation + CI
-- [x] v1.4.0 — Profession Contracts implementation + CI
+- [x] v1.1.0 — Adventurer Profile
+- [x] v1.1.1 — Leaderboard & Profile QoL
+- [x] v1.2.0 — Rite of Rebirth
+- [x] v1.3.0 — Profession Mastery
+- [x] v1.4.0 — Profession Contracts
+- [x] v1.5.0 — Fate Resonance
 
-## Current candidate
-- [x] v1.5.0 — Fate Resonance implementation
-- [x] v1.5.0 CI `clean verify`
-- [ ] all ten unique Five Paths pair definitions load from config
-- [ ] Resonant threshold regression at configured minimum Job levels
-- [ ] Harmonized threshold regression at configured Mastery tier
-- [ ] lowering/resetting a paired Job must immediately lock derived Resonance again
-- [ ] Rebirth must not alter Resonance when Job Level/Mastery stay unchanged
-- [ ] `resonancedebug`, stats and PlaceholderAPI regression test
-- [ ] config reload test for custom names/titles/badges/thresholds and disabled definitions
-- [ ] invalid/duplicate pair validator warning test
-- [ ] restart test: derived state must remain identical without separate resonance persistence
-- [ ] re-run Contracts + Mastery + Five Paths regression matrix
-- [ ] promote v1.5.0 to stable only after real-server validation
+## Current candidate — v1.6.0 Public API v2 & GUI Refresh
+- [x] API v1 compatibility methods retained
+- [x] API version raised to `2`
+- [x] Bukkit `ServicesManager` API publication
+- [x] immutable Profile/Profession/Mastery/Contract/Resonance/Leaderboard snapshots
+- [x] skill/statistic/Trial/flag/cooldown query surface
+- [x] Skill/Trial/Mastery/Hunter PvP/Contract/Rebirth/Awakening public events
+- [x] GUI aesthetic framing by profession/theme
+- [x] GUI drag hardening + contextual error logging
+- [x] Contract claim recovery checkpoints
+- [x] expired reward-location pruning
+- [x] schema remains `9`
+- [ ] final v1.6.0 CI `clean verify` on release HEAD
+- [ ] temporary integration plugin resolves API from `ServicesManager`
+- [ ] API v1 compatibility integration smoke test
+- [ ] all API v2 snapshot reads test on fresh + progressed player
+- [ ] all new API v2 Bukkit events fire exactly once at valid transitions
+- [ ] admin/API `addXp` must not fabricate `ProfessionActionEvent`
+- [ ] Contract claim retry/error-path regression
+- [ ] GUI click + drag exploit regression across all CdrJobs/Rebirth menus
+- [ ] GUI Bedrock/Geyser usability smoke test if server exposes menus cross-platform
+- [ ] restart persistence/regression across Five Paths, Mastery, Contracts, Resonance and Rebirth
+- [ ] profile/leaderboard/PlaceholderAPI regression
+- [ ] full Five Paths anti-exploit matrix
+- [ ] promote v1.6.0 to stable only after real-server validation
 
-## Later standalone roadmap
-- [ ] v1.6.0 — Public API v2
+## Next phase after standalone stability
+Optional MENKIESTESParty integration using `CdrJobsAPI` v2 and Bukkit events.
 
-## After standalone stability
-Optional MENKIESTESParty integration using CdrJobs public API/events. Party integration remains soft/optional and must pass the same release gate.
+Rules for Party integration:
+- CdrJobs must remain standalone and optional.
+- MENKIESTESParty must not read `cdrjobs.db` directly.
+- Party Projects should consume anti-exploit-approved `ProfessionActionEvent`.
+- Profession roster/specialist views should use API snapshots.
+- Integration receives its own CI + real-server release gate.
+
+Future standalone additions should be driven by real-server feedback rather than adding systems before the v1.6.0 baseline is validated.
