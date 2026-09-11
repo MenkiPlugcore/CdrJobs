@@ -1,4 +1,5 @@
-# CdrJobs v0.5.0 — CALL OF THE DEEP
+# CdrJobs v1.0.0 — FIVE PATHS
+# Production defaults. MENKIESTES SOFTWARE / CADERA
 settings:
   max-level: 100
   actionbar-xp: true
@@ -38,11 +39,7 @@ fisher:
   xp-multiplier: 1.0
   treasure-xp: 20
   xp: { COD: 5, SALMON: 6, TROPICAL_FISH: 10, PUFFERFISH: 12 }
-  anti-exploit:
-    afk-after-seconds: 600
-  trials:
-    trial-of-tide: { catches: 250 }
-    trial-of-abyss: { catches: 1000, treasures: 50, ocean-catches: 100 }
-  abilities:
-    oceans-call: { duration-seconds: 20, cooldown-seconds: 300, xp-bonus-percent: 25.0 }
+  anti-exploit: { afk-after-seconds: 600 }
+  trials: { trial-of-tide: { catches: 250 }, trial-of-abyss: { catches: 1000, treasures: 50, ocean-catches: 100 } }
+  abilities: { oceans-call: { duration-seconds: 20, cooldown-seconds: 300, xp-bonus-percent: 25.0 } }
 anti-exploit: { placed-ore-tracking: true, piston-move-tracking: true, cleanup-exploded-ores: true }
