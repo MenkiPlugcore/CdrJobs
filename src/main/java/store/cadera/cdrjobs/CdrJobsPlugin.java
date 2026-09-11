@@ -12,22 +12,9 @@ import store.cadera.cdrjobs.command.JobsCommand;
 import store.cadera.cdrjobs.data.Database;
 import store.cadera.cdrjobs.data.ProfessionStore;
 import store.cadera.cdrjobs.gui.JobsMenu;
-import store.cadera.cdrjobs.listener.FarmerListener;
-import store.cadera.cdrjobs.listener.FisherListener;
-import store.cadera.cdrjobs.listener.HunterListener;
-import store.cadera.cdrjobs.listener.LumberjackListener;
-import store.cadera.cdrjobs.listener.MenuListener;
-import store.cadera.cdrjobs.listener.MinerListener;
+import store.cadera.cdrjobs.listener.*;
 import store.cadera.cdrjobs.placeholder.CdrJobsExpansion;
-import store.cadera.cdrjobs.service.FarmerService;
-import store.cadera.cdrjobs.service.FisherService;
-import store.cadera.cdrjobs.service.HunterService;
-import store.cadera.cdrjobs.service.LevelService;
-import store.cadera.cdrjobs.service.LumberjackService;
-import store.cadera.cdrjobs.service.MinerAbilityService;
-import store.cadera.cdrjobs.service.MinerTrialService;
-import store.cadera.cdrjobs.service.ProgressionService;
-import store.cadera.cdrjobs.service.SkillService;
+import store.cadera.cdrjobs.service.*;
 import store.cadera.cdrjobs.util.ConfigValidator;
 
 import java.io.File;
@@ -88,7 +75,7 @@ public final class CdrJobsPlugin extends JavaPlugin {
 
         JobsMenu menu = new JobsMenu(this, database, professionStore, levelService, minerTrials, farmer, hunter, lumberjack, fisher);
         JobsCommand jobsCommand = new JobsCommand(this, database, menu, levelService, minerAbility, farmer, hunter, lumberjack, fisher);
-        AdminCommand adminCommand = new AdminCommand(this, database, professionStore, progression);
+        AdminCommand adminCommand = new AdminCommand(this, database, professionStore, progression, hunter);
         registerCommand("cdrjobs", jobsCommand, jobsCommand);
         registerCommand("cdrjobsadmin", adminCommand, adminCommand);
 
@@ -98,12 +85,7 @@ public final class CdrJobsPlugin extends JavaPlugin {
         lumberjackListener = new LumberjackListener(this, professionStore, progression, lumberjack, levelService);
         fisherListener = new FisherListener(this, progression, fisher, levelService);
 
-        for (var listener : List.of(
-                minerListener,
-                farmerListener,
-                hunterListener,
-                lumberjackListener,
-                fisherListener,
+        for (var listener : List.of(minerListener, farmerListener, hunterListener, lumberjackListener, fisherListener,
                 new MenuListener(menu, minerSkills, farmer, hunter, lumberjack, fisher))) {
             getServer().getPluginManager().registerEvents(listener, this);
         }
@@ -111,23 +93,14 @@ public final class CdrJobsPlugin extends JavaPlugin {
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             new CdrJobsExpansion(this, database, professionStore, levelService).register();
         }
-
-        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — STABILITY PATCH enabled.");
+        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — HUNTER QOL & SAFETY enabled.");
     }
 
     @Override
     public void onDisable() {
         api = null;
-        try {
-            if (professionStore != null) professionStore.close();
-        } catch (SQLException exception) {
-            getLogger().warning(exception.getMessage());
-        }
-        try {
-            if (database != null) database.close();
-        } catch (SQLException exception) {
-            getLogger().warning(exception.getMessage());
-        }
+        try { if (professionStore != null) professionStore.close(); } catch (SQLException exception) { getLogger().warning(exception.getMessage()); }
+        try { if (database != null) database.close(); } catch (SQLException exception) { getLogger().warning(exception.getMessage()); }
     }
 
     public CdrJobsAPI getApi() {
@@ -170,32 +143,21 @@ public final class CdrJobsPlugin extends JavaPlugin {
         if (fisherListener != null) fisherListener.refreshXpMap();
     }
 
-    public String prefix() {
-        return messages.getString("prefix", "&8[&bCdrJobs&8] &r");
-    }
-
-    public String message(String path) {
-        return messages.getString(path, path);
-    }
+    public String prefix() { return messages.getString("prefix", "&8[&bCdrJobs&8] &r"); }
+    public String message(String path) { return messages.getString(path, path); }
 
     public Map<Integer, Integer> fateMilestones() {
         Map<Integer, Integer> result = new LinkedHashMap<>();
         ConfigurationSection section = getConfig().getConfigurationSection("fate-essence-milestones");
         if (section != null) {
             for (String key : section.getKeys(false)) {
-                try {
-                    result.put(Integer.parseInt(key), section.getInt(key));
-                } catch (NumberFormatException ignored) {
-                }
+                try { result.put(Integer.parseInt(key), section.getInt(key)); } catch (NumberFormatException ignored) {}
             }
         }
         return result;
     }
 
-    public Map<Material, Integer> loadMinerXp() {
-        return loadActivityXp("miner.xp");
-    }
-
+    public Map<Material, Integer> loadMinerXp() { return loadActivityXp("miner.xp"); }
     public Map<Material, Integer> loadActivityXp(String path) {
         Map<Material, Integer> result = new HashMap<>();
         ConfigurationSection section = getConfig().getConfigurationSection(path);

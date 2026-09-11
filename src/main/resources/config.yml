@@ -1,4 +1,4 @@
-# CdrJobs v1.0.3 — HUNTER CONFIGURABILITY HOTFIX
+# CdrJobs v1.0.4 — HUNTER QOL & SAFETY
 # Production defaults. MENKIESTES SOFTWARE / CADERA
 settings:
   max-level: 100
@@ -23,18 +23,27 @@ farmer:
 hunter:
   enabled: true
   xp-multiplier: 1.0
-  # true = mob yang tidak tertulis di hunter.xp tetap memberi fallback XP.
-  # false = hanya mob di daftar hunter.xp yang memberi Hunter XP.
-  allow-unlisted-mobs: true
   fallback-mob-xp: 3
+  mob-filter:
+    # ALL = configured mobs use custom XP, other mobs use fallback-mob-xp.
+    # WHITELIST = only mobs explicitly present under hunter.xp can reward XP.
+    mode: ALL
+    # Blacklist always wins over ALL/WHITELIST. Use Bukkit EntityType names.
+    blacklist: []
   xp: { ZOMBIE: 5, SKELETON: 6, CREEPER: 7, SPIDER: 5, CAVE_SPIDER: 6, DROWNED: 7, HUSK: 6, STRAY: 7, BLAZE: 10, ENDERMAN: 10, PIGLIN_BRUTE: 14, WITHER_SKELETON: 12, GUARDIAN: 10, ELDER_GUARDIAN: 40, RAVAGER: 30, EVOKER: 25, WITHER: 120, WARDEN: 150 }
+  anti-exploit: { exclude-spawner: true, exclude-breeding: true }
   pvp:
     enabled: true
     xp: 10
     count-toward-trials: true
-    # Killer yang sama hanya mendapat reward lagi dari victim yang sama setelah cooldown ini.
     same-victim-cooldown-seconds: 300
-  anti-exploit: { exclude-spawner: true, exclude-breeding: true }
+    anti-farm:
+      block-same-ip: false
+      minimum-online-seconds: 60
+      minimum-playtime-seconds: 300
+      kill-streak:
+        max-rewards-per-window: 5
+        window-seconds: 120
   trials: { trial-of-fang: { kills: 300 }, trial-of-crimson-moon: { kills: 1200, night-kills: 250, dangerous-kills: 10 } }
   abilities: { crimson-hunt: { duration-seconds: 20, cooldown-seconds: 300, xp-bonus-percent: 25.0 } }
 lumberjack:

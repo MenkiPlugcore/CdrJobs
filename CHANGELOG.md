@@ -1,41 +1,50 @@
 # Changelog
 
+## 1.0.4 — Hunter QoL & Safety
+- Replaced ambiguous unlisted-mob behavior with `hunter.mob-filter.mode: ALL|WHITELIST`.
+- Added optional Hunter mob blacklist; blacklist always overrides whitelist/ALL mode.
+- Added separate rewarded `mob_kills` and `pvp_kills` counters.
+- Added PlaceholderAPI: `%cdrjobs_hunter_mob_kills%` and `%cdrjobs_hunter_pvp_kills%`.
+- Added `/cdrjobsadmin hunterdebug <player>` with the latest Hunter reward decision and safety state.
+- Added PvP same-IP block option, minimum victim online time, minimum victim total playtime, same-victim cooldown and rolling kill-streak reward limit.
+- Mob and PvP actionbars are now clearly distinguished.
+- Existing spawner/breeding exclusions remain active.
+- No database schema change; schema remains `9`.
+
 ## 1.0.3 — Hunter Configurability Hotfix
-- Added `hunter.allow-unlisted-mobs` to switch between fallback mode and strict mob whitelist mode.
-- Added configurable Hunter PvP progression with `hunter.pvp.enabled` and `hunter.pvp.xp`.
-- Added `hunter.pvp.count-toward-trials`.
-- Added persistent same-victim PvP cooldown to reduce kill farming.
-- Player kills can now grant Hunter XP when PvP progression is enabled.
-- Existing mob XP table, fallback XP, spawner exclusion and breeding exclusion remain supported.
-- No database schema change; existing cooldown storage is reused.
+- Added configurable PvP Hunter XP and Trial participation.
+- Added persistent same-victim PvP reward cooldown.
+- Added configurable allow-unlisted/fallback mob behavior.
 
 ## 1.0.2 — Hunter Progression Hotfix
-- Hunter progression is now mob-based by default.
-- Any non-player living mob can grant Hunter XP.
-- Mobs listed in `hunter.xp` keep their custom XP values.
-- Unlisted mobs use configurable `hunter.fallback-mob-xp` (default `3`).
-- Existing spawner and breeding anti-exploit exclusions remain active.
-- Armor Stands are excluded from Hunter progression.
-- Fixed the practical issue where killing an unlisted mob resulted in no Hunter XP at all.
-- No database schema change; schema remains `9`.
+- Hunter mob kills can progress even when the mob is not explicitly listed, using fallback XP.
+- Player kills were separated from mob handling.
 
 ## 1.0.1 — Stability Patch
-- Added `/cdrjobsadmin inspect <player>` for five-profession progression inspection.
-- Hardened admin command syntax and numeric validation.
-- `addxp` now rejects zero/negative values.
-- `setlevel` now rejects values outside the configured level range.
-- Added XP overflow protection and max-level no-op behavior.
-- `/cdrjobsadmin diagnose` now reports expected schema and schema health.
-- `/cdrjobsadmin reload` now persists merged config defaults before refreshing XP maps.
-- Expanded config validation warnings for invalid curves, multipliers, Fate milestones and anti-exploit thresholds.
-- Synced production docs and roadmap.
-- No database schema change; schema remains `9`.
+- Added `/cdrjobsadmin inspect <player>`.
+- Hardened admin numeric validation, reload behavior and config checks.
+- Added XP overflow protection and schema health diagnostics.
 
 ## 1.0.0 — Five Paths
 - First standalone production baseline.
 - Five professions: Miner, Farmer, Hunter, Lumberjack and Fisher.
 - Global Fate Essence, profession skill trees, trials, active abilities and awakened paths.
-- SQLite WAL persistence and profession-specific anti-exploit protections.
-- Public CdrJobs API v1 and Bukkit integration events.
-- PlaceholderAPI integration, admin diagnostics and production test matrix.
-- CI release gate with `mvn clean verify`.
+- SQLite persistence, anti-exploit protections, public API/events and PlaceholderAPI integration.
+
+## 0.9.0 — Adventurer API
+- Public CdrJobsAPI, profession events, schema marker, diagnostics and production test matrix.
+
+## 0.5.0 — Call of the Deep
+- Tidebound Angler (Fisher), anti-AFK, trials, Ocean's Call.
+
+## 0.4.0 — Oath of the Ancient Grove
+- Ironbark Warden (Lumberjack), placed-log protection, trials, Grove Rhythm.
+
+## 0.3.0 — Blood Moon
+- Bloodfang Stalker (Hunter), spawn-origin protection, trials, Crimson Hunt.
+
+## 0.2.0 — Verdant Awakening
+- Verdant Keeper (Farmer), harvest anti-spam, Rootbound, trials, Verdant Bloom.
+
+## 0.1.x — Runebound Chapters
+- Runebound Delver, Fate Essence, skill tree, trials, Runic Surge and exploit hardening.

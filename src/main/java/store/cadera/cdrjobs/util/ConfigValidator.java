@@ -1,13 +1,14 @@
 package store.cadera.cdrjobs.util;
 
+import org.bukkit.entity.EntityType;
 import org.bukkit.configuration.ConfigurationSection;
 import store.cadera.cdrjobs.CdrJobsPlugin;
 
+import java.util.Locale;
+
 public final class ConfigValidator {
     private static final String[] JOBS = {"miner", "farmer", "hunter", "lumberjack", "fisher"};
-
-    private ConfigValidator() {
-    }
+    private ConfigValidator() {}
 
     public static void validate(CdrJobsPlugin plugin) {
         int maxLevel = plugin.getConfig().getInt("settings.max-level", 100);
@@ -22,22 +23,28 @@ public final class ConfigValidator {
 
         for (String job : JOBS) {
             double multiplier = plugin.getConfig().getDouble(job + ".xp-multiplier", 1.0D);
-            if (multiplier < 0D) plugin.getLogger().warning(job + ".xp-multiplier is negative; rewards will be clamped by profession logic.");
+            if (multiplier < 0D) plugin.getLogger().warning(job + ".xp-multiplier is negative; rewards will be clamped.");
             ConfigurationSection xp = plugin.getConfig().getConfigurationSection(job + ".xp");
             if (plugin.getConfig().getBoolean(job + ".enabled", true) && (xp == null || xp.getKeys(false).isEmpty())) {
                 plugin.getLogger().warning(job + " is enabled but has no XP entries configured.");
             }
         }
 
-        int fallbackMobXp = plugin.getConfig().getInt("hunter.fallback-mob-xp", 3);
-        if (fallbackMobXp < 0) plugin.getLogger().warning("hunter.fallback-mob-xp cannot be negative; runtime clamps it to 0.");
-        int pvpXp = plugin.getConfig().getInt("hunter.pvp.xp", 10);
-        if (pvpXp < 0) plugin.getLogger().warning("hunter.pvp.xp cannot be negative; runtime clamps it to 0.");
-        long pvpCooldown = plugin.getConfig().getLong("hunter.pvp.same-victim-cooldown-seconds", 300L);
-        if (pvpCooldown < 0L) plugin.getLogger().warning("hunter.pvp.same-victim-cooldown-seconds cannot be negative; runtime clamps it to 0.");
-        if (plugin.getConfig().getBoolean("hunter.pvp.enabled", true) && pvpCooldown == 0L) {
-            plugin.getLogger().warning("Hunter PvP same-victim cooldown is disabled; this may allow kill farming.");
+        String hunterMode = plugin.getConfig().getString("hunter.mob-filter.mode", "ALL").toUpperCase(Locale.ROOT);
+        if (!hunterMode.equals("ALL") && !hunterMode.equals("WHITELIST")) {
+            plugin.getLogger().warning("hunter.mob-filter.mode must be ALL or WHITELIST.");
         }
+        for (String raw : plugin.getConfig().getStringList("hunter.mob-filter.blacklist")) {
+            try { EntityType.valueOf(raw.toUpperCase(Locale.ROOT)); }
+            catch (IllegalArgumentException ex) { plugin.getLogger().warning("Invalid hunter blacklist entity: " + raw); }
+        }
+        if (plugin.getConfig().getInt("hunter.fallback-mob-xp", 3) < 0) plugin.getLogger().warning("hunter.fallback-mob-xp should be >= 0.");
+        if (plugin.getConfig().getInt("hunter.pvp.xp", 10) < 0) plugin.getLogger().warning("hunter.pvp.xp should be >= 0.");
+        if (plugin.getConfig().getLong("hunter.pvp.same-victim-cooldown-seconds", 300L) < 0L) plugin.getLogger().warning("Hunter same-victim cooldown cannot be negative.");
+        if (plugin.getConfig().getLong("hunter.pvp.anti-farm.minimum-online-seconds", 60L) < 0L) plugin.getLogger().warning("Hunter minimum online time cannot be negative.");
+        if (plugin.getConfig().getLong("hunter.pvp.anti-farm.minimum-playtime-seconds", 300L) < 0L) plugin.getLogger().warning("Hunter minimum playtime cannot be negative.");
+        if (plugin.getConfig().getInt("hunter.pvp.anti-farm.kill-streak.max-rewards-per-window", 5) < 0) plugin.getLogger().warning("Hunter PvP max rewards per window cannot be negative.");
+        if (plugin.getConfig().getLong("hunter.pvp.anti-farm.kill-streak.window-seconds", 120L) < 1L) plugin.getLogger().warning("Hunter PvP reward window should be >= 1 second.");
 
         ConfigurationSection milestones = plugin.getConfig().getConfigurationSection("fate-essence-milestones");
         if (milestones != null) {
@@ -46,7 +53,7 @@ public final class ConfigValidator {
                 try {
                     int level = Integer.parseInt(key);
                     int reward = milestones.getInt(key);
-                    if (level < 1 || level > safeMax) plugin.getLogger().warning("Fate Essence milestone " + level + " is outside the configured level range 1-" + safeMax + ".");
+                    if (level < 1 || level > safeMax) plugin.getLogger().warning("Fate Essence milestone " + level + " is outside level range 1-" + safeMax + ".");
                     if (reward <= 0) plugin.getLogger().warning("Fate Essence milestone " + level + " should reward at least 1 Essence.");
                 } catch (NumberFormatException exception) {
                     plugin.getLogger().warning("Invalid Fate Essence milestone key: " + key);
@@ -55,9 +62,8 @@ public final class ConfigValidator {
         }
 
         long farmerCooldown = plugin.getConfig().getLong("farmer.anti-exploit.location-cooldown-seconds", 30L);
-        if (farmerCooldown < 0L) plugin.getLogger().warning("Farmer location cooldown cannot be negative; runtime will clamp it.");
-
+        if (farmerCooldown < 0L) plugin.getLogger().warning("Farmer location cooldown cannot be negative.");
         long fisherAfk = plugin.getConfig().getLong("fisher.anti-exploit.afk-after-seconds", 600L);
-        if (fisherAfk < 60L) plugin.getLogger().warning("Fisher AFK threshold below 60s is aggressive and may cause false positives.");
+        if (fisherAfk < 60L) plugin.getLogger().warning("Fisher AFK threshold below 60s may cause false positives.");
     }
 }
