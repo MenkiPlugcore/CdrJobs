@@ -84,13 +84,14 @@ public final class CdrJobsPlugin extends JavaPlugin {
         ProfileService profiles = new ProfileService(database, professionStore);
         VaultEconomyHook vault = new VaultEconomyHook(this);
         RebirthService rebirth = new RebirthService(this, database, rebirthStore, vault, profiles);
+        ContractService contracts = new ContractService(this, database, professionStore, progression);
 
         JobsMenu menu = new JobsMenu(this, database, professionStore, levelService, minerTrials,
                 farmer, hunter, lumberjack, fisher, profiles);
         RebirthMenu rebirthMenu = new RebirthMenu(this, rebirth);
         JobsCommand jobsCommand = new JobsCommand(this, database, menu, rebirthMenu, levelService, minerAbility,
-                farmer, hunter, lumberjack, fisher, leaderboardService, mastery);
-        AdminCommand adminCommand = new AdminCommand(this, database, professionStore, progression, hunter, rebirth, mastery);
+                farmer, hunter, lumberjack, fisher, leaderboardService, mastery, contracts);
+        AdminCommand adminCommand = new AdminCommand(this, database, professionStore, progression, hunter, rebirth, mastery, contracts);
         registerCommand("cdrjobs", jobsCommand, jobsCommand);
         registerCommand("cdrjobsadmin", adminCommand, adminCommand);
 
@@ -102,14 +103,15 @@ public final class CdrJobsPlugin extends JavaPlugin {
 
         for (var listener : List.of(minerListener, farmerListener, hunterListener, lumberjackListener, fisherListener,
                 new MenuListener(menu, minerSkills, farmer, hunter, lumberjack, fisher),
-                new RebirthListener(this, rebirthMenu, rebirth))) {
+                new RebirthListener(this, rebirthMenu, rebirth),
+                new ContractListener(contracts))) {
             getServer().getPluginManager().registerEvents(listener, this);
         }
 
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
-            new CdrJobsExpansion(this, database, professionStore, levelService, profiles, mastery).register();
+            new CdrJobsExpansion(this, database, professionStore, levelService, profiles, mastery, contracts).register();
         }
-        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — PROFESSION MASTERY enabled.");
+        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — PROFESSION CONTRACTS enabled.");
     }
 
     @Override
