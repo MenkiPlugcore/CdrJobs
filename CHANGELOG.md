@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.0 — Profession Contracts
+- Added deterministic per-player Daily and Weekly Profession Contracts.
+- Contract progress is driven by `ProfessionActionEvent`, so only profession activity already accepted by anti-exploit logic counts.
+- Added `/cdrjobs contracts`, `/cdrjobs contracts claim <daily|weekly>`, and `/cdrjobs contracts reroll <daily|weekly>`.
+- Added configurable custom contract definitions with cadence, Job, target, XP reward, and Fate Essence reward.
+- Added configurable timezone, reroll limits, and optional progress actionbar.
+- Daily/Weekly assignment remains stable across relog/restart and rotates only when the configured cycle changes or the player uses a reroll.
+- Reroll resets progress and is blocked after completion/claim; default limit is one reroll per cadence per cycle.
+- Added Contract PlaceholderAPI values for id, name, Job, progress, target, percentage, completion/claim state, rewards, and rerolls left.
+- Default Daily rewards use profession XP only; default Weekly rewards add one Fate Essence to preserve Fate scarcity.
+- Contract state reuses `profession_counters`; no schema migration, schema remains `9`.
+
 ## 1.3.0 — Profession Mastery
 - Added post-Level-100 Profession Mastery for all five Jobs.
 - Profession XP earned at max level is now routed into persistent Mastery XP instead of being discarded.
