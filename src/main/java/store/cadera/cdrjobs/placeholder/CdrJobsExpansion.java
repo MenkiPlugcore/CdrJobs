@@ -10,10 +10,7 @@ import store.cadera.cdrjobs.data.ProfessionStore;
 import store.cadera.cdrjobs.model.JobProgress;
 import store.cadera.cdrjobs.model.JobType;
 import store.cadera.cdrjobs.model.MinerTrialProgress;
-import store.cadera.cdrjobs.service.ContractService;
-import store.cadera.cdrjobs.service.LevelService;
-import store.cadera.cdrjobs.service.MasteryService;
-import store.cadera.cdrjobs.service.ProfileService;
+import store.cadera.cdrjobs.service.*;
 import store.cadera.cdrjobs.util.JobRanks;
 
 public final class CdrJobsExpansion extends PlaceholderExpansion {
@@ -24,10 +21,11 @@ public final class CdrJobsExpansion extends PlaceholderExpansion {
     private final ProfileService profiles;
     private final MasteryService mastery;
     private final ContractService contracts;
+    private final FateResonanceService resonance;
 
     public CdrJobsExpansion(CdrJobsPlugin plugin, Database db, ProfessionStore store,
                             LevelService levels, ProfileService profiles, MasteryService mastery,
-                            ContractService contracts) {
+                            ContractService contracts, FateResonanceService resonance) {
         this.plugin = plugin;
         this.db = db;
         this.store = store;
@@ -35,6 +33,7 @@ public final class CdrJobsExpansion extends PlaceholderExpansion {
         this.profiles = profiles;
         this.mastery = mastery;
         this.contracts = contracts;
+        this.resonance = resonance;
     }
 
     @Override public @NotNull String getIdentifier() { return "cdrjobs"; }
@@ -48,6 +47,30 @@ public final class CdrJobsExpansion extends PlaceholderExpansion {
         String query = param.toLowerCase();
 
         if (query.equals("fate_essence")) return String.valueOf(db.getFateEssence(player.getUniqueId()));
+
+        if (query.equals("resonance_unlocked")) return String.valueOf(resonance.unlockedCount(player.getUniqueId()));
+        if (query.equals("resonance_harmonized")) return String.valueOf(resonance.harmonizedCount(player.getUniqueId()));
+        if (query.equals("resonance_score")) return String.valueOf(resonance.score(player.getUniqueId()));
+        if (query.equals("resonance_names")) return resonance.unlockedNames(player.getUniqueId());
+        if (query.equals("resonance_harmonized_names")) return resonance.harmonizedNames(player.getUniqueId());
+        if (query.startsWith("resonance_")) {
+            String body = query.substring("resonance_".length());
+            for (FateResonanceService.Definition def : resonance.definitions()) {
+                String prefix = def.id() + "_";
+                if (!body.startsWith(prefix)) continue;
+                FateResonanceService.State state = resonance.state(player.getUniqueId(), def);
+                String tail = body.substring(prefix.length());
+                return switch (tail) {
+                    case "unlocked" -> String.valueOf(state.unlocked());
+                    case "harmonized" -> String.valueOf(state.harmonized());
+                    case "status" -> state.harmonized() ? "HARMONIZED" : state.unlocked() ? "RESONANT" : "LOCKED";
+                    case "display" -> resonance.display(state);
+                    case "title" -> def.title();
+                    case "badge" -> def.badge();
+                    default -> null;
+                };
+            }
+        }
 
         if (query.startsWith("contract_daily_")) return contractValue(player, ContractService.Cadence.DAILY, query.substring("contract_daily_".length()));
         if (query.startsWith("contract_weekly_")) return contractValue(player, ContractService.Cadence.WEEKLY, query.substring("contract_weekly_".length()));
@@ -74,6 +97,9 @@ public final class CdrJobsExpansion extends PlaceholderExpansion {
                 case "awakened_paths" -> snapshot.awakenedNames();
                 case "mastery_tiers" -> String.valueOf(mastery.totalMasteryTiers(player.getUniqueId()));
                 case "mastery_xp" -> String.valueOf(mastery.totalMasteryXp(player.getUniqueId()));
+                case "resonance_unlocked" -> String.valueOf(resonance.unlockedCount(player.getUniqueId()));
+                case "resonance_harmonized" -> String.valueOf(resonance.harmonizedCount(player.getUniqueId()));
+                case "resonance_score" -> String.valueOf(resonance.score(player.getUniqueId()));
                 default -> null;
             };
         }
