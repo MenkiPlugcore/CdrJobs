@@ -14,7 +14,7 @@
 
 ## Current candidate
 - [x] v1.3.0 — Profession Mastery implementation
-- [ ] v1.3.0 CI `clean verify`
+- [x] v1.3.0 CI `clean verify`
 - [ ] Level 100 XP routing + overflow regression test across all five professions
 - [ ] Mastery I–X curve/config reload test
 - [ ] restart/persistence test for Mastery XP
