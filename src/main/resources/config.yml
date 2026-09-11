@@ -1,4 +1,4 @@
-# CdrJobs v1.2.0 — RITE OF REBIRTH
+# CdrJobs v1.3.0 — PROFESSION MASTERY
 # Production defaults. MENKIESTES SOFTWARE / CADERA
 settings:
   max-level: 100
@@ -9,6 +9,13 @@ settings:
 leaderboards:
   limit: 10
   cache-seconds: 30
+mastery:
+  enabled: true
+  # XP earned after profession Lv.100 is routed into Mastery.
+  max-tier: 10
+  base-xp: 5000
+  growth-per-tier: 2500
+  tier-up-sound: true
 rite-of-rebirth:
   enabled: true
   # Default 7 days. Persistent across restart.
