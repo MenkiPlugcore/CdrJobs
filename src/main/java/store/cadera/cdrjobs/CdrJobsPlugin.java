@@ -59,6 +59,10 @@ public final class CdrJobsPlugin extends JavaPlugin {
             professionStore = new ProfessionStore(getDataFolder());
             professionStore.connect();
             professionStore.setSchemaVersion(9);
+            int prunedLocations = professionStore.pruneExpiredRewardLocations();
+            if (prunedLocations > 0) {
+                getLogger().info("Pruned " + prunedLocations + " expired profession reward-location rows.");
+            }
             database.backfillFateMilestoneClaims(fateMilestones().keySet());
             leaderboardService = new LeaderboardService(this, getDataFolder());
             rebirthStore = new RebirthStore(getDataFolder());
@@ -72,7 +76,6 @@ public final class CdrJobsPlugin extends JavaPlugin {
         levelService = new LevelService(this);
         MasteryService mastery = new MasteryService(this, professionStore);
         ProgressionService progression = new ProgressionService(this, database, levelService, mastery);
-        api = new CdrJobsAPI(database, progression);
 
         MinerTrialService minerTrials = new MinerTrialService(this, database);
         SkillService minerSkills = new SkillService(this, database, minerTrials);
@@ -86,6 +89,9 @@ public final class CdrJobsPlugin extends JavaPlugin {
         RebirthService rebirth = new RebirthService(this, database, rebirthStore, vault, profiles);
         ContractService contracts = new ContractService(this, database, professionStore, progression);
         FateResonanceService resonance = new FateResonanceService(this, database, mastery);
+
+        api = new CdrJobsAPI(database, professionStore, progression, profiles, mastery,
+                contracts, resonance, leaderboardService);
 
         JobsMenu menu = new JobsMenu(this, database, professionStore, levelService, minerTrials,
                 farmer, hunter, lumberjack, fisher, profiles);
@@ -102,17 +108,24 @@ public final class CdrJobsPlugin extends JavaPlugin {
         lumberjackListener = new LumberjackListener(this, professionStore, progression, lumberjack, levelService);
         fisherListener = new FisherListener(this, progression, fisher, levelService);
 
-        for (var listener : List.of(minerListener, farmerListener, hunterListener, lumberjackListener, fisherListener,
-                new MenuListener(menu, minerSkills, farmer, hunter, lumberjack, fisher),
+        for (var listener : List.of(
+                minerListener,
+                farmerListener,
+                hunterListener,
+                lumberjackListener,
+                fisherListener,
+                new MenuListener(this, database, professionStore, menu, minerSkills, farmer, hunter, lumberjack, fisher),
                 new RebirthListener(this, rebirthMenu, rebirth),
-                new ContractListener(contracts))) {
+                new ContractListener(contracts),
+                new GuiThemeListener()
+        )) {
             getServer().getPluginManager().registerEvents(listener, this);
         }
 
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             new CdrJobsExpansion(this, database, professionStore, levelService, profiles, mastery, contracts, resonance).register();
         }
-        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — FATE RESONANCE enabled.");
+        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — PUBLIC API v2 + GUI HARDENING enabled.");
     }
 
     @Override
