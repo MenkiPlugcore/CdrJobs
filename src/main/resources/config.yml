@@ -1,4 +1,4 @@
-# CdrJobs v1.1.1 — LEADERBOARD & PROFILE QOL
+# CdrJobs v1.2.0 — RITE OF REBIRTH
 # Production defaults. MENKIESTES SOFTWARE / CADERA
 settings:
   max-level: 100
@@ -9,6 +9,17 @@ settings:
 leaderboards:
   limit: 10
   cache-seconds: 30
+rite-of-rebirth:
+  enabled: true
+  # Default 7 days. Persistent across restart.
+  cooldown-seconds: 604800
+  # Percentage of invested Fate Essence returned when the skill tree is reset.
+  refund-percent: 100
+  fee:
+    # NONE, FATE, or VAULT. VAULT is optional and only required when this mode is used.
+    mode: NONE
+    fate-essence: 0
+    vault: 0.0
 fate-essence-milestones: { 10: 1, 25: 1, 45: 1, 70: 1, 100: 2 }
 miner:
   enabled: true
