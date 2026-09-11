@@ -27,7 +27,7 @@
 - [x] Contract claim recovery checkpoints
 - [x] expired reward-location pruning
 - [x] schema remains `9`
-- [ ] final v1.6.0 CI `clean verify` on release HEAD
+- [x] final v1.6.0 CI `clean verify` on release source/docs candidate
 - [ ] temporary integration plugin resolves API from `ServicesManager`
 - [ ] API v1 compatibility integration smoke test
 - [ ] all API v2 snapshot reads test on fresh + progressed player
