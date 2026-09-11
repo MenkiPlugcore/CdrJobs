@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.5.0 — Fate Resonance
+- Added derived cross-profession Fate Resonance for all ten unique Five Paths pairings.
+- Resonance unlocks dynamically from canonical profession levels; no separate player resonance state is stored.
+- Added two progression states: `RESONANT` when both paired professions meet the configured level requirement, and `HARMONIZED` when both also meet the configured Mastery tier requirement.
+- Added `/cdrjobs resonance [id]` / `/cdrjobs fateresonance [id]` with progress/status details.
+- Added configurable resonance definitions with custom name, title, badge, profession pair, minimum level, and harmonized Mastery tier.
+- Added global and per-resonance PlaceholderAPI values for unlocked/harmonized state, score, display, title and badge.
+- Added `/cdrjobsadmin resonancedebug <player>` plus Resonance state in diagnose, inspect and debug export.
+- Added Resonance summary to `/cdrjobs stats`.
+- Added configuration validation for invalid Jobs, duplicate pairings, level range, and Mastery thresholds.
+- Resonance is intentionally status/QoL oriented; v1.5.0 adds no damage, gathering, drop-rate, or economy multiplier.
+- No database schema migration; schema remains `9`.
+
 ## 1.4.0 — Profession Contracts
 - Added deterministic per-player Daily and Weekly Profession Contracts.
 - Contract progress is driven by `ProfessionActionEvent`, so only profession activity already accepted by anti-exploit logic counts.
