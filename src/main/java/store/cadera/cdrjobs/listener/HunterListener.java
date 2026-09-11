@@ -64,12 +64,15 @@ public final class HunterListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onDeath(EntityDeathEvent event) {
         if (!plugin.getConfig().getBoolean("hunter.enabled", true)) return;
-
-        // Hunter is a mob-hunting profession. PvP/player kills never grant Hunter progression.
-        if (event.getEntity() instanceof Player || event.getEntity() instanceof ArmorStand) return;
+        if (event.getEntity() instanceof ArmorStand) return;
 
         Player killer = event.getEntity().getKiller();
         if (killer == null) return;
+
+        if (event.getEntity() instanceof Player victim) {
+            handlePlayerKill(killer, victim);
+            return;
+        }
 
         String spawnOrigin = event.getEntity().getPersistentDataContainer().get(origin, PersistentDataType.STRING);
         if (spawnOrigin != null) {
@@ -81,16 +84,34 @@ public final class HunterListener implements Listener {
         }
 
         EntityType type = event.getEntityType();
-        int configuredXp = xp.getOrDefault(type, -1);
+        Integer configured = xp.get(type);
+        boolean allowUnlisted = plugin.getConfig().getBoolean("hunter.allow-unlisted-mobs", true);
+        if (configured == null && !allowUnlisted) return;
+
         int fallbackXp = Math.max(0, plugin.getConfig().getInt("hunter.fallback-mob-xp", 3));
-        int baseXp = configuredXp >= 0 ? configuredXp : fallbackXp;
+        int baseXp = configured != null ? configured : fallbackXp;
         if (baseXp <= 0) return;
 
         boolean dangerous = hunter.dangerous(type);
+        grantHunterProgress(killer, baseXp, dangerous, true);
+    }
+
+    private void handlePlayerKill(Player killer, Player victim) {
+        if (!plugin.getConfig().getBoolean("hunter.pvp.enabled", true)) return;
+        if (killer.getUniqueId().equals(victim.getUniqueId())) return;
+        if (!hunter.tryClaimPvpReward(killer, victim)) return;
+
+        int baseXp = Math.max(0, plugin.getConfig().getInt("hunter.pvp.xp", 10));
+        if (baseXp <= 0) return;
+        boolean countTowardTrials = plugin.getConfig().getBoolean("hunter.pvp.count-toward-trials", true);
+        grantHunterProgress(killer, baseXp, false, countTowardTrials);
+    }
+
+    private void grantHunterProgress(Player killer, int baseXp, boolean dangerous, boolean countTowardTrials) {
         long time = killer.getWorld().getTime();
         boolean night = time >= 13000 && time <= 23000;
 
-        hunter.recordKill(killer, dangerous, night);
+        if (countTowardTrials) hunter.recordKill(killer, dangerous, night);
         plugin.getServer().getPluginManager().callEvent(
                 new ProfessionActionEvent(killer, JobType.HUNTER, ProfessionActionType.KILL_ENTITY, 1)
         );
