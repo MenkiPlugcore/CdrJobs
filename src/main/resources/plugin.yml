@@ -1,14 +1,14 @@
 name: CdrJobs
-version: '1.4.0'
+version: '1.5.0'
 main: store.cadera.cdrjobs.CdrJobsPlugin
 api-version: '1.21'
 author: CADERA
-description: Fantasy profession progression system by CADERA. Five Paths, Profession Contracts, Mastery, Adventurer Profile, leaderboards, Rite of Rebirth, Fate Essence, trials and public API.
+description: Fantasy profession progression system by CADERA. Five Paths, Fate Resonance, Profession Contracts, Mastery, Adventurer Profile, leaderboards, Rite of Rebirth, Fate Essence, trials and public API.
 softdepend: [PlaceholderAPI, Vault]
 commands:
   cdrjobs:
     aliases: [jobs, cjobs]
-    description: Open CdrJobs, contracts, mastery, profile, leaderboards, Rite of Rebirth, or profession progression.
+    description: Open CdrJobs, Fate Resonance, contracts, mastery, profile, leaderboards, Rite of Rebirth, or profession progression.
     usage: /cdrjobs
   cdrjobsadmin:
     aliases: [cjobsadmin]
