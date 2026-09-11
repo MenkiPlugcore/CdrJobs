@@ -13,10 +13,11 @@
 
 ## Current candidate
 - [x] v1.1.1 — Leaderboard & Profile QoL implementation
-- [ ] v1.1.1 CI `clean verify`
+- [x] v1.1.1 CI `clean verify`
 - [ ] profession/total/PvP/activity leaderboard regression test
 - [ ] cache/reload behavior test
 - [ ] restart/persistence smoke test
+- [ ] promote v1.1.1 to stable only after real-server validation
 
 ## Later standalone roadmap
 - [ ] v1.2.0 — Rite of Rebirth
