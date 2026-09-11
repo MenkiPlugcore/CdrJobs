@@ -34,11 +34,12 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
     private final LumberjackService lumber;
     private final FisherService fisher;
     private final LeaderboardService leaderboards;
+    private final MasteryService mastery;
 
     public JobsCommand(CdrJobsPlugin plugin, Database db, JobsMenu menu, RebirthMenu rebirthMenu,
                        LevelService levels, MinerAbilityService miner, FarmerService farmer,
                        HunterService hunter, LumberjackService lumber, FisherService fisher,
-                       LeaderboardService leaderboards) {
+                       LeaderboardService leaderboards, MasteryService mastery) {
         this.plugin = plugin;
         this.db = db;
         this.menu = menu;
@@ -50,6 +51,7 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
         this.lumber = lumber;
         this.fisher = fisher;
         this.leaderboards = leaderboards;
+        this.mastery = mastery;
     }
 
     @Override
@@ -72,6 +74,7 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
         switch (sub) {
             case "profile" -> openProfile(player, args);
             case "top", "leaderboard" -> showLeaderboard(player, args);
+            case "mastery", "prestige" -> showMastery(player, args);
             case "rebirth", "respec" -> openRebirth(player, args);
             case "miner", "skills" -> menu.openMiner(player);
             case "farmer" -> menu.openFarmer(player);
@@ -98,6 +101,47 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
             default -> menu.openMain(player);
         }
         return true;
+    }
+
+    private void showMastery(Player player, String[] args) {
+        if (!mastery.enabled()) {
+            player.sendMessage("§cProfession Mastery sedang dinonaktifkan.");
+            return;
+        }
+        if (args.length == 1) {
+            player.sendMessage("§6✦ Profession Mastery §8— §7XP setelah Lv." + levels.maxLevel());
+            for (JobType job : JobType.values()) {
+                JobProgress progress = db.getProgress(player.getUniqueId(), job);
+                MasteryService.State state = mastery.state(player.getUniqueId(), job);
+                if (progress.level() < levels.maxLevel() && state.tier() == 0) {
+                    player.sendMessage("§7- §b" + job.displayName() + " §8— §7Locked until Lv." + levels.maxLevel());
+                } else {
+                    player.sendMessage(masteryLine(job, state));
+                }
+            }
+            player.sendMessage("§7Total Mastery tiers: §f" + mastery.totalMasteryTiers(player.getUniqueId())
+                    + " §8• §7Total Mastery XP: §f" + mastery.totalMasteryXp(player.getUniqueId()));
+            return;
+        }
+        JobType job = parseJob(args[1]);
+        if (job == null) {
+            player.sendMessage("§cJob tidak valid. Gunakan miner, farmer, hunter, lumberjack, atau fisher.");
+            return;
+        }
+        JobProgress progress = db.getProgress(player.getUniqueId(), job);
+        MasteryService.State state = mastery.state(player.getUniqueId(), job);
+        player.sendMessage("§6✦ " + job.displayName() + " Mastery");
+        player.sendMessage("§7Profession level: §f" + progress.level() + "§7/" + levels.maxLevel());
+        player.sendMessage("§7Tier: §f" + (state.tier() == 0 ? "Unmastered" : "Mastery " + mastery.roman(state.tier())));
+        player.sendMessage("§7Prestige title: §f" + mastery.display(job, state));
+        player.sendMessage("§7Mastery XP: §f" + (state.maxed() ? "MAX" : state.xp() + "/" + state.requiredXp()));
+        player.sendMessage("§7Total Mastery XP: §f" + state.totalXp());
+    }
+
+    private String masteryLine(JobType job, MasteryService.State state) {
+        String tier = state.tier() == 0 ? "Unmastered" : "Mastery " + mastery.roman(state.tier());
+        String xp = state.maxed() ? "MAX" : state.xp() + "/" + state.requiredXp();
+        return "§7- §b" + job.displayName() + " §8— §6" + tier + " §8• §f" + xp + " §8• §7" + state.title();
     }
 
     private void openRebirth(Player player, String[] args) {
@@ -137,9 +181,9 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
         if (args.length < 2) {
             viewer.sendMessage("§3CdrJobs Leaderboard");
             viewer.sendMessage("§7/cdrjobs top <miner|farmer|hunter|lumberjack|fisher>");
-            viewer.sendMessage("§7/cdrjobs top total");
-            viewer.sendMessage("§7/cdrjobs top pvp");
+            viewer.sendMessage("§7/cdrjobs top total | pvp | mastery-total");
             viewer.sendMessage("§7/cdrjobs top activity <job>");
+            viewer.sendMessage("§7/cdrjobs top mastery <job>");
             return;
         }
 
@@ -150,6 +194,23 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
         }
         if (type.equals("pvp") || type.equals("hunterpvp")) {
             sendRows(viewer, "Hunter PvP Kills", leaderboards.hunterPvp(), RowMode.COUNT);
+            return;
+        }
+        if (type.equals("mastery-total") || type.equals("masterytotal") || type.equals("prestige")) {
+            sendMasteryTotalRows(viewer, leaderboards.masteryTotal());
+            return;
+        }
+        if (type.equals("mastery")) {
+            if (args.length < 3) {
+                viewer.sendMessage("§cUsage: /cdrjobs top mastery <job>");
+                return;
+            }
+            JobType job = parseJob(args[2]);
+            if (job == null) {
+                viewer.sendMessage("§cJob tidak valid.");
+                return;
+            }
+            sendMasteryRows(viewer, job, leaderboards.mastery(job));
             return;
         }
         if (type.equals("activity")) {
@@ -168,10 +229,37 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
 
         JobType job = parseJob(type);
         if (job == null) {
-            viewer.sendMessage("§cLeaderboard tidak valid. Gunakan job, total, pvp, atau activity <job>.");
+            viewer.sendMessage("§cLeaderboard tidak valid.");
             return;
         }
         sendRows(viewer, job.displayName() + " Profession", leaderboards.profession(job), RowMode.PROFESSION);
+    }
+
+    private void sendMasteryRows(Player viewer, JobType job, List<LeaderboardService.LeaderboardRow> rows) {
+        viewer.sendMessage("§6✦ CdrJobs Top — §f" + job.displayName() + " Mastery");
+        if (rows.isEmpty()) {
+            viewer.sendMessage("§7Belum ada data Mastery.");
+            return;
+        }
+        for (int i = 0; i < rows.size(); i++) {
+            LeaderboardService.LeaderboardRow row = rows.get(i);
+            MasteryService.State state = mastery.stateFromTotal(row.value());
+            viewer.sendMessage("§6#" + (i + 1) + " §f" + row.name() + " §8— §6Mastery "
+                    + mastery.roman(state.tier()) + " §8• §7" + state.title() + " §8• §f" + row.value() + " XP");
+        }
+    }
+
+    private void sendMasteryTotalRows(Player viewer, List<LeaderboardService.LeaderboardRow> rows) {
+        viewer.sendMessage("§6✦ CdrJobs Top — §fTotal Prestige");
+        if (rows.isEmpty()) {
+            viewer.sendMessage("§7Belum ada data Mastery.");
+            return;
+        }
+        for (int i = 0; i < rows.size(); i++) {
+            LeaderboardService.LeaderboardRow row = rows.get(i);
+            viewer.sendMessage("§6#" + (i + 1) + " §f" + row.name() + " §8— §6"
+                    + mastery.totalMasteryTiers(row.uuid()) + " tiers §8• §f" + row.value() + " Mastery XP");
+        }
     }
 
     private void sendRows(Player viewer, String title, List<LeaderboardService.LeaderboardRow> rows, RowMode mode) {
@@ -208,24 +296,31 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
         viewer.sendMessage("§3✦ CdrJobs — " + target.getName());
         for (JobType job : JobType.values()) {
             JobProgress progress = db.getProgress(target.getUniqueId(), job);
+            MasteryService.State state = mastery.state(target.getUniqueId(), job);
+            String masteryText = state.tier() > 0 ? " §6| M." + mastery.roman(state.tier()) : "";
             viewer.sendMessage("§b" + job.displayName() + " §7• " + JobRanks.title(job, progress.level())
                     + " §f| Lv." + progress.level() + " | "
-                    + (progress.level() >= levels.maxLevel() ? "MAX" : progress.xp() + "/" + levels.xpRequiredForNextLevel(progress.level())));
+                    + (progress.level() >= levels.maxLevel() ? "MAX" : progress.xp() + "/" + levels.xpRequiredForNextLevel(progress.level()))
+                    + masteryText);
         }
         viewer.sendMessage("§dFate Essence: " + db.getFateEssence(target.getUniqueId()));
+        viewer.sendMessage("§6Total Mastery: " + mastery.totalMasteryTiers(target.getUniqueId()) + " tiers");
     }
 
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
-        if (args.length == 1) return List.of("profile", "top", "rebirth", "stats", "miner", "farmer", "hunter", "lumberjack", "fisher", "trials", "ability");
-        if (args.length == 2 && (args[0].equalsIgnoreCase("trials") || args[0].equalsIgnoreCase("ability") || args[0].equalsIgnoreCase("rebirth") || args[0].equalsIgnoreCase("respec"))) {
+        if (args.length == 1) return List.of("profile", "top", "mastery", "rebirth", "stats", "miner", "farmer", "hunter", "lumberjack", "fisher", "trials", "ability");
+        if (args.length == 2 && (args[0].equalsIgnoreCase("trials") || args[0].equalsIgnoreCase("ability")
+                || args[0].equalsIgnoreCase("rebirth") || args[0].equalsIgnoreCase("respec")
+                || args[0].equalsIgnoreCase("mastery") || args[0].equalsIgnoreCase("prestige"))) {
             return List.of("miner", "farmer", "hunter", "lumberjack", "fisher");
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("top")) {
-            return List.of("total", "pvp", "activity", "miner", "farmer", "hunter", "lumberjack", "fisher");
+            return List.of("total", "pvp", "activity", "mastery", "mastery-total", "miner", "farmer", "hunter", "lumberjack", "fisher");
         }
-        if (args.length == 3 && args[0].equalsIgnoreCase("top") && args[1].equalsIgnoreCase("activity")) {
+        if (args.length == 3 && args[0].equalsIgnoreCase("top")
+                && (args[1].equalsIgnoreCase("activity") || args[1].equalsIgnoreCase("mastery"))) {
             return List.of("miner", "farmer", "hunter", "lumberjack", "fisher");
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("stats") || args[0].equalsIgnoreCase("profile"))) {
