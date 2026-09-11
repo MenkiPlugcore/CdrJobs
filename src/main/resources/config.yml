@@ -1,4 +1,4 @@
-# CdrJobs v1.3.0 — PROFESSION MASTERY
+# CdrJobs v1.4.0 — PROFESSION CONTRACTS
 # Production defaults. MENKIESTES SOFTWARE / CADERA
 settings:
   max-level: 100
@@ -11,19 +11,93 @@ leaderboards:
   cache-seconds: 30
 mastery:
   enabled: true
-  # XP earned after profession Lv.100 is routed into Mastery.
   max-tier: 10
   base-xp: 5000
   growth-per-tier: 2500
   tier-up-sound: true
+contracts:
+  enabled: true
+  timezone: Asia/Jakarta
+  progress-actionbar: false
+  daily-rerolls: 1
+  weekly-rerolls: 1
+  # Add/remove definitions freely. Assignment is deterministic per player/cycle.
+  definitions:
+    daily-miner:
+      name: "Ore Commission"
+      cadence: DAILY
+      job: MINER
+      target: 150
+      reward-xp: 750
+      reward-fate: 0
+    daily-farmer:
+      name: "Harvest Order"
+      cadence: DAILY
+      job: FARMER
+      target: 200
+      reward-xp: 750
+      reward-fate: 0
+    daily-hunter:
+      name: "Hunting Order"
+      cadence: DAILY
+      job: HUNTER
+      target: 75
+      reward-xp: 750
+      reward-fate: 0
+    daily-lumberjack:
+      name: "Timber Order"
+      cadence: DAILY
+      job: LUMBERJACK
+      target: 100
+      reward-xp: 750
+      reward-fate: 0
+    daily-fisher:
+      name: "Catch Order"
+      cadence: DAILY
+      job: FISHER
+      target: 30
+      reward-xp: 750
+      reward-fate: 0
+    weekly-miner:
+      name: "Deepworks Commission"
+      cadence: WEEKLY
+      job: MINER
+      target: 1000
+      reward-xp: 3000
+      reward-fate: 1
+    weekly-farmer:
+      name: "Great Harvest"
+      cadence: WEEKLY
+      job: FARMER
+      target: 1400
+      reward-xp: 3000
+      reward-fate: 1
+    weekly-hunter:
+      name: "Predator Contract"
+      cadence: WEEKLY
+      job: HUNTER
+      target: 500
+      reward-xp: 3000
+      reward-fate: 1
+    weekly-lumberjack:
+      name: "Ancient Timber Commission"
+      cadence: WEEKLY
+      job: LUMBERJACK
+      target: 700
+      reward-xp: 3000
+      reward-fate: 1
+    weekly-fisher:
+      name: "Tide Commission"
+      cadence: WEEKLY
+      job: FISHER
+      target: 200
+      reward-xp: 3000
+      reward-fate: 1
 rite-of-rebirth:
   enabled: true
-  # Default 7 days. Persistent across restart.
   cooldown-seconds: 604800
-  # Percentage of invested Fate Essence returned when the skill tree is reset.
   refund-percent: 100
   fee:
-    # NONE, FATE, or VAULT. VAULT is optional and only required when this mode is used.
     mode: NONE
     fate-essence: 0
     vault: 0.0
