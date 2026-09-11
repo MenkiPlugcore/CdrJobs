@@ -14,10 +14,14 @@ import store.cadera.cdrjobs.listener.MenuListener;
 import store.cadera.cdrjobs.listener.MinerListener;
 import store.cadera.cdrjobs.placeholder.CdrJobsExpansion;
 import store.cadera.cdrjobs.service.LevelService;
+import store.cadera.cdrjobs.service.MinerAbilityService;
+import store.cadera.cdrjobs.service.MinerTrialService;
 import store.cadera.cdrjobs.service.ProgressionService;
 import store.cadera.cdrjobs.service.SkillService;
 
 import java.io.File;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -33,6 +37,8 @@ public final class CdrJobsPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        getConfig().options().copyDefaults(true);
+        saveConfig();
         saveResource("messages.yml", false);
         loadMessages();
 
@@ -47,15 +53,17 @@ public final class CdrJobsPlugin extends JavaPlugin {
 
         levelService = new LevelService(getConfig().getInt("settings.max-level", 100));
         ProgressionService progression = new ProgressionService(this, database, levelService);
-        SkillService skills = new SkillService(this, database);
-        JobsMenu menu = new JobsMenu(this, database, levelService);
+        MinerTrialService trials = new MinerTrialService(this, database);
+        SkillService skills = new SkillService(this, database, trials);
+        MinerAbilityService abilities = new MinerAbilityService(this, database);
+        JobsMenu menu = new JobsMenu(this, database, levelService, trials);
 
-        JobsCommand jobsCommand = new JobsCommand(this, database, menu, levelService);
+        JobsCommand jobsCommand = new JobsCommand(this, database, menu, levelService, abilities);
         AdminCommand adminCommand = new AdminCommand(this, database, progression);
         registerCommand("cdrjobs", jobsCommand, jobsCommand);
         registerCommand("cdrjobsadmin", adminCommand, adminCommand);
 
-        minerListener = new MinerListener(this, database, progression, skills, levelService);
+        minerListener = new MinerListener(this, database, progression, skills, levelService, trials, abilities);
         getServer().getPluginManager().registerEvents(minerListener, this);
         getServer().getPluginManager().registerEvents(new MenuListener(menu, skills), this);
 
@@ -64,7 +72,7 @@ public final class CdrJobsPlugin extends JavaPlugin {
             getLogger().info("PlaceholderAPI detected. CdrJobs placeholders enabled.");
         }
 
-        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — THE RUNEBORN enabled.");
+        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — TRIALS OF THE DEEP enabled.");
         getLogger().info("Choose Your Path, Shape Your Fate.");
     }
 
@@ -89,10 +97,21 @@ public final class CdrJobsPlugin extends JavaPlugin {
     private void loadMessages() {
         File file = new File(getDataFolder(), "messages.yml");
         messages = YamlConfiguration.loadConfiguration(file);
+        try (var stream = getResource("messages.yml")) {
+            if (stream != null) {
+                YamlConfiguration defaults = YamlConfiguration.loadConfiguration(new InputStreamReader(stream, StandardCharsets.UTF_8));
+                messages.setDefaults(defaults);
+                messages.options().copyDefaults(true);
+                messages.save(file);
+            }
+        } catch (Exception e) {
+            getLogger().log(Level.WARNING, "Could not merge messages.yml defaults.", e);
+        }
     }
 
     public void reloadPluginFiles() {
         reloadConfig();
+        getConfig().options().copyDefaults(true);
         loadMessages();
         if (minerListener != null) minerListener.refreshXpMap();
     }

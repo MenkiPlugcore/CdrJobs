@@ -1,4 +1,4 @@
-# CdrJobs v0.1.0 — THE RUNEBORN
+# CdrJobs v0.1.1 — TRIALS OF THE DEEP
 # MENKIESTES SOFTWARE / CADERA
 
 settings:
@@ -7,6 +7,7 @@ settings:
   levelup-sound: true
   save-on-disable: true
 
+# Fate Essence is intentionally scarce. Players must choose their build carefully.
 fate-essence-milestones:
   10: 1
   25: 1
@@ -16,6 +17,7 @@ fate-essence-milestones:
 
 miner:
   enabled: true
+
   xp:
     COAL_ORE: 4
     DEEPSLATE_COAL_ORE: 5
@@ -37,5 +39,22 @@ miner:
     NETHER_QUARTZ_ORE: 5
     ANCIENT_DEBRIS: 35
 
+  trials:
+    trial-of-stone:
+      total-ores: 500
+    trial-of-the-deep:
+      deep-ores: 1200
+      rare-ores: 80
+      ancient-debris: 10
+
+  abilities:
+    runic-surge:
+      duration-seconds: 20
+      cooldown-seconds: 300
+      xp-bonus-percent: 25.0
+      haste-level: 1
+
 anti-exploit:
+  # Ore placed by a player never grants profession XP or trial progress when broken.
+  # Coordinates are persisted in SQLite, so restarting the server does not bypass this protection.
   placed-ore-tracking: true

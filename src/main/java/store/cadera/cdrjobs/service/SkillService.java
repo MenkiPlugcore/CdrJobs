@@ -10,10 +10,12 @@ import store.cadera.cdrjobs.util.Colors;
 public final class SkillService {
     private final CdrJobsPlugin plugin;
     private final Database database;
+    private final MinerTrialService trials;
 
-    public SkillService(CdrJobsPlugin plugin, Database database) {
+    public SkillService(CdrJobsPlugin plugin, Database database, MinerTrialService trials) {
         this.plugin = plugin;
         this.database = database;
+        this.trials = trials;
     }
 
     public boolean tryUpgrade(Player player, MinerSkill skill) {
@@ -34,10 +36,19 @@ public final class SkillService {
             return false;
         }
 
+        if (skill == MinerSkill.RUNIC_SURGE && !trials.isStoneComplete(player)) {
+            player.sendMessage(Colors.color(plugin.prefix() + plugin.message("trial-required").replace("%trial%", "Trial of Stone")));
+            return false;
+        }
+
         if (skill == MinerSkill.HEART_OF_MOUNTAIN) {
             if (database.getSkillRank(player.getUniqueId(), MinerSkill.GEMSEEKER) < 3
                     || database.getSkillRank(player.getUniqueId(), MinerSkill.ECHO_OF_DEPTH) < 3) {
                 player.sendMessage(Colors.color(plugin.prefix() + plugin.message("skill-requirement")));
+                return false;
+            }
+            if (!trials.isDeepComplete(player)) {
+                player.sendMessage(Colors.color(plugin.prefix() + plugin.message("trial-required").replace("%trial%", "Trial of the Deep")));
                 return false;
             }
         }

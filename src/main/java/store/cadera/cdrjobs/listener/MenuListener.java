@@ -23,7 +23,7 @@ public final class MenuListener implements Listener {
     @EventHandler
     public void onClick(InventoryClickEvent event) {
         String title = event.getView().getTitle();
-        if (!title.equals(JobsMenu.MAIN_TITLE) && !title.equals(JobsMenu.MINER_TITLE)) return;
+        if (!title.equals(JobsMenu.MAIN_TITLE) && !title.equals(JobsMenu.MINER_TITLE) && !title.equals(JobsMenu.TRIALS_TITLE)) return;
         event.setCancelled(true);
         if (!(event.getWhoClicked() instanceof Player player)) return;
 
@@ -34,7 +34,8 @@ public final class MenuListener implements Listener {
         if (action == null) return;
 
         switch (action) {
-            case "open_miner" -> menu.openMiner(player);
+            case "open_miner", "back_miner" -> menu.openMiner(player);
+            case "open_trials" -> menu.openTrials(player);
             case "back_main" -> menu.openMain(player);
             case "upgrade_skill" -> {
                 String skillId = meta.getPersistentDataContainer().get(menu.skillKey(), PersistentDataType.STRING);

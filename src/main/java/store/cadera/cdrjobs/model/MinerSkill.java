@@ -9,12 +9,14 @@ public enum MinerSkill {
             "+5% ore XP per rank."),
     DEEPBORN("Deepborn", Material.DEEPSLATE, 25, 3, 1, STONEWHISPER, 2,
             "+7% XP below Y=0 per rank."),
+    RUNIC_SURGE("Runic Surge", Material.AMETHYST_SHARD, 35, 1, 2, RUNEBREAKER, 2,
+            "Active ability: awaken the runes for temporary Haste and Miner XP."),
     GEMSEEKER("Gemseeker", Material.DIAMOND, 45, 3, 2, RUNEBREAKER, 2,
             "4% per rank chance to double profession XP."),
     ECHO_OF_DEPTH("Echo of the Depth", Material.SCULK, 45, 3, 2, DEEPBORN, 2,
             "Mining streaks awaken a temporary Haste blessing."),
     HEART_OF_MOUNTAIN("Heart of the Mountain", Material.NETHER_STAR, 100, 1, 5, null, 0,
-            "Awakened path. Requires both branches at Rank III.");
+            "Awakened path. Requires both branches and Trial of the Deep.");
 
     private final String displayName;
     private final Material icon;

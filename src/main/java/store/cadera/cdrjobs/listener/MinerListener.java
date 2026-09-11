@@ -17,6 +17,8 @@ import store.cadera.cdrjobs.model.JobProgress;
 import store.cadera.cdrjobs.model.JobType;
 import store.cadera.cdrjobs.model.MinerSkill;
 import store.cadera.cdrjobs.service.LevelService;
+import store.cadera.cdrjobs.service.MinerAbilityService;
+import store.cadera.cdrjobs.service.MinerTrialService;
 import store.cadera.cdrjobs.service.ProgressionService;
 import store.cadera.cdrjobs.service.SkillService;
 
@@ -30,15 +32,20 @@ public final class MinerListener implements Listener {
     private final ProgressionService progression;
     private final SkillService skills;
     private final LevelService levels;
+    private final MinerTrialService trials;
+    private final MinerAbilityService abilities;
     private Map<Material, Integer> oreXp;
     private final Map<UUID, Streak> streaks = new HashMap<>();
 
-    public MinerListener(CdrJobsPlugin plugin, Database database, ProgressionService progression, SkillService skills, LevelService levels) {
+    public MinerListener(CdrJobsPlugin plugin, Database database, ProgressionService progression, SkillService skills,
+                         LevelService levels, MinerTrialService trials, MinerAbilityService abilities) {
         this.plugin = plugin;
         this.database = database;
         this.progression = progression;
         this.skills = skills;
         this.levels = levels;
+        this.trials = trials;
+        this.abilities = abilities;
         this.oreXp = plugin.loadMinerXp();
     }
 
@@ -48,6 +55,7 @@ public final class MinerListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent event) {
+        if (!plugin.getConfig().getBoolean("miner.enabled", true)) return;
         if (!plugin.getConfig().getBoolean("anti-exploit.placed-ore-tracking", true)) return;
         if (oreXp.containsKey(event.getBlockPlaced().getType())) {
             database.markPlacedOre(event.getBlockPlaced().getLocation());
@@ -56,6 +64,8 @@ public final class MinerListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
+        if (!plugin.getConfig().getBoolean("miner.enabled", true)) return;
+
         Block block = event.getBlock();
         Integer base = oreXp.get(block.getType());
         if (base == null) return;
@@ -66,7 +76,10 @@ public final class MinerListener implements Listener {
         }
 
         Player player = event.getPlayer();
+        trials.onNaturalOreMined(player, block);
+
         long xp = skills.applyMinerXpModifiers(player, base);
+        xp = abilities.applyXpBoost(player, xp);
         JobProgress progress = progression.addXp(player, JobType.MINER, xp);
 
         updateEchoStreak(player);
