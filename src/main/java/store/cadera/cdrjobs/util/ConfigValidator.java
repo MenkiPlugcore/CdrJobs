@@ -1,10 +1,14 @@
 package store.cadera.cdrjobs.util;
 
-import org.bukkit.entity.EntityType;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.EntityType;
 import store.cadera.cdrjobs.CdrJobsPlugin;
+import store.cadera.cdrjobs.model.JobType;
 
+import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public final class ConfigValidator {
     private static final String[] JOBS = {"miner", "farmer", "hunter", "lumberjack", "fisher"};
@@ -81,5 +85,43 @@ public final class ConfigValidator {
         if (masteryMax < 1 || masteryMax > 50) plugin.getLogger().warning("mastery.max-tier should be 1-50; runtime clamps it.");
         if (plugin.getConfig().getLong("mastery.base-xp", 5000L) <= 0L) plugin.getLogger().warning("mastery.base-xp must be > 0; runtime clamps it.");
         if (plugin.getConfig().getLong("mastery.growth-per-tier", 2500L) < 0L) plugin.getLogger().warning("mastery.growth-per-tier cannot be negative; runtime clamps it.");
+
+        validateResonance(plugin, Math.max(1, maxLevel), Math.max(1, masteryMax));
+    }
+
+    private static void validateResonance(CdrJobsPlugin plugin, int maxLevel, int masteryMax) {
+        ConfigurationSection root = plugin.getConfig().getConfigurationSection("fate-resonance.definitions");
+        if (root == null) {
+            if (plugin.getConfig().getBoolean("fate-resonance.enabled", true)) {
+                plugin.getLogger().warning("Fate Resonance is enabled but no definitions exist.");
+            }
+            return;
+        }
+        Set<String> pairs = new HashSet<>();
+        for (String id : root.getKeys(false)) {
+            ConfigurationSection section = root.getConfigurationSection(id);
+            if (section == null || !section.getBoolean("enabled", true)) continue;
+            List<String> jobs = section.getStringList("jobs");
+            if (jobs.size() != 2) {
+                plugin.getLogger().warning("Fate Resonance '" + id + "' must define exactly two jobs.");
+                continue;
+            }
+            JobType first;
+            JobType second;
+            try {
+                first = JobType.valueOf(jobs.get(0).toUpperCase(Locale.ROOT));
+                second = JobType.valueOf(jobs.get(1).toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException exception) {
+                plugin.getLogger().warning("Fate Resonance '" + id + "' contains an invalid job.");
+                continue;
+            }
+            if (first == second) plugin.getLogger().warning("Fate Resonance '" + id + "' cannot pair a Job with itself.");
+            String pair = first.ordinal() < second.ordinal() ? first.name() + ":" + second.name() : second.name() + ":" + first.name();
+            if (!pairs.add(pair)) plugin.getLogger().warning("Duplicate Fate Resonance pair detected: " + pair + " (definition " + id + ").");
+            int minLevel = section.getInt("min-level", 50);
+            if (minLevel < 1 || minLevel > maxLevel) plugin.getLogger().warning("Fate Resonance '" + id + "' min-level should be 1-" + maxLevel + ".");
+            int harmonized = section.getInt("harmonized-mastery-tier", 1);
+            if (harmonized < 0 || harmonized > masteryMax) plugin.getLogger().warning("Fate Resonance '" + id + "' harmonized-mastery-tier should be 0-" + masteryMax + ".");
+        }
     }
 }
