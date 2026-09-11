@@ -3,7 +3,7 @@
 **Choose Your Path, Shape Your Fate.**
 
 Standalone production line for five fantasy professions on Paper 1.21.x.
-Current candidate: `v1.1.1 — Leaderboard & Profile QoL`.
+Current candidate: `v1.2.0 — Rite of Rebirth`.
 
 ## Professions
 - ⛏ Runebound Delver — Miner
@@ -21,6 +21,29 @@ Each profession has Lv.1–100 progression, fantasy ranks, Path of Ascension, sc
 - `/cdrjobs trials <job>` Trial progress
 - `/cdrjobs ability <job>` active ability
 - `/cdrjobs stats [player]` compact text stats
+- `/cdrjobs rebirth [job]` / `/cdrjobs respec [job]` skill-tree respec GUI
+
+## Rite of Rebirth
+Rite of Rebirth resets only the selected profession's skill tree. It deliberately preserves:
+- profession level and XP
+- Trial progress/completion
+- lifetime activity statistics
+- Fate milestone claim ledger
+- normal active-ability cooldowns
+
+Refund and cooldown defaults:
+```yaml
+rite-of-rebirth:
+  enabled: true
+  cooldown-seconds: 604800
+  refund-percent: 100
+  fee:
+    mode: NONE
+    fate-essence: 0
+    vault: 0.0
+```
+
+Fee modes are `NONE`, `FATE`, and `VAULT`. Vault is a soft dependency and is only needed when `VAULT` mode is selected. Rebirth deletion/refund/cooldown updates are transactional to prevent repeated-click refund duplication.
 
 ## Leaderboards
 - `/cdrjobs top <job>` — profession level/XP ranking
@@ -56,9 +79,11 @@ Legacy Miner Trial placeholders remain supported:
 - SQLite persistence + non-destructive schema creation
 - one-time Fate milestone claim ledger
 - profession-specific anti-exploit rules
+- transactional Rebirth respec/refund handling
 - configurable XP curve/multipliers
 - cached leaderboard reads
 - PlaceholderAPI optional
+- Vault optional for Rebirth economy fees
 - public Java API + Bukkit events
 - GitHub Actions `clean verify`
 - automatic CI JAR artifact
@@ -73,6 +98,7 @@ Legacy Miner Trial placeholders remain supported:
 - `/cdrjobsadmin resetjob <player> <job>`
 - `/cdrjobsadmin resettrial <player> <job>`
 - `/cdrjobsadmin resetcooldown <player> <job>`
+- `/cdrjobsadmin forcerespec <player> <job>`
 - `/cdrjobsadmin addxp <player> [job] <amount>`
 - `/cdrjobsadmin setlevel <player> [job] <level>`
 - `/cdrjobsadmin addessence <player> <amount>`
@@ -80,7 +106,7 @@ Legacy Miner Trial placeholders remain supported:
 - `/cdrjobsadmin export <player> [file|console|both]`
 
 ## Server testing
-See [`docs/TESTING.md`](docs/TESTING.md) and [`docs/RELEASE_PROCESS.md`](docs/RELEASE_PROCESS.md).
+See [`docs/TESTING.md`](docs/TESTING.md), [`docs/RELEASE_PROCESS.md`](docs/RELEASE_PROCESS.md), and [`docs/updates/v1.2.0.md`](docs/updates/v1.2.0.md).
 
 ## Developer API
 See [`docs/API.md`](docs/API.md).
