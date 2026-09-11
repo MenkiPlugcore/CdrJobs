@@ -24,6 +24,7 @@ public final class ProfessionStore implements AutoCloseable {
         try (Statement s = connection.createStatement()) {
             s.execute("PRAGMA journal_mode=WAL");
             s.execute("PRAGMA synchronous=NORMAL");
+            s.execute("PRAGMA busy_timeout=3000");
             s.execute("CREATE TABLE IF NOT EXISTS profession_counters (uuid TEXT NOT NULL, job TEXT NOT NULL, metric TEXT NOT NULL, value INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(uuid,job,metric))");
             s.execute("CREATE TABLE IF NOT EXISTS profession_flags (uuid TEXT NOT NULL, job TEXT NOT NULL, flag TEXT NOT NULL, value INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(uuid,job,flag))");
             s.execute("CREATE TABLE IF NOT EXISTS reward_locations (activity TEXT NOT NULL, world TEXT NOT NULL, x INTEGER NOT NULL, y INTEGER NOT NULL, z INTEGER NOT NULL, ready_at INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(activity,world,x,y,z))");
@@ -215,12 +216,21 @@ public final class ProfessionStore implements AutoCloseable {
                 ps.setInt(3, location.getBlockX());
                 ps.setInt(4, location.getBlockY());
                 ps.setInt(5, location.getBlockZ());
-                ps.setLong(6, now + Math.max(0, cooldown));
+                ps.setLong(6, now + Math.max(0L, cooldown));
                 ps.executeUpdate();
             }
             return true;
         } catch (SQLException e) {
             throw new IllegalStateException(e);
+        }
+    }
+
+    public synchronized int pruneExpiredRewardLocations() {
+        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM reward_locations WHERE ready_at<=?")) {
+            ps.setLong(1, System.currentTimeMillis());
+            return ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to prune expired reward locations", e);
         }
     }
 
