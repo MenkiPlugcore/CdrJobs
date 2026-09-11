@@ -1,4 +1,4 @@
-# CdrJobs v1.4.0 — PROFESSION CONTRACTS
+# CdrJobs v1.5.0 — FATE RESONANCE
 # Production defaults. MENKIESTES SOFTWARE / CADERA
 settings:
   max-level: 100
@@ -15,6 +15,91 @@ mastery:
   base-xp: 5000
   growth-per-tier: 2500
   tier-up-sound: true
+fate-resonance:
+  enabled: true
+  # Resonance is derived from canonical Job Level + Mastery. No separate player state is stored.
+  # Resonant = both Jobs reach min-level. Harmonized = both also reach harmonized-mastery-tier.
+  definitions:
+    earthbound:
+      enabled: true
+      name: "Earthbound"
+      title: "Earthbound"
+      badge: "✦"
+      jobs: [MINER, LUMBERJACK]
+      min-level: 50
+      harmonized-mastery-tier: 1
+    groveborn:
+      enabled: true
+      name: "Groveborn"
+      title: "Child of the Grove"
+      badge: "❈"
+      jobs: [FARMER, LUMBERJACK]
+      min-level: 50
+      harmonized-mastery-tier: 1
+    cave-stalker:
+      enabled: true
+      name: "Cave Stalker"
+      title: "Cave Stalker"
+      badge: "◆"
+      jobs: [MINER, HUNTER]
+      min-level: 50
+      harmonized-mastery-tier: 1
+    deep-predator:
+      enabled: true
+      name: "Deep Predator"
+      title: "Predator of the Deep"
+      badge: "☾"
+      jobs: [HUNTER, FISHER]
+      min-level: 50
+      harmonized-mastery-tier: 1
+    abyss-delver:
+      enabled: true
+      name: "Abyss Delver"
+      title: "Abyss Delver"
+      badge: "◇"
+      jobs: [MINER, FISHER]
+      min-level: 50
+      harmonized-mastery-tier: 1
+    wildborn:
+      enabled: true
+      name: "Wildborn"
+      title: "Wildborn"
+      badge: "✧"
+      jobs: [HUNTER, FARMER]
+      min-level: 50
+      harmonized-mastery-tier: 1
+    tide-gardener:
+      enabled: true
+      name: "Tide Gardener"
+      title: "Keeper of Tides"
+      badge: "❖"
+      jobs: [FARMER, FISHER]
+      min-level: 50
+      harmonized-mastery-tier: 1
+    iron-harvest:
+      enabled: true
+      name: "Iron Harvest"
+      title: "Warden of the Harvest"
+      badge: "✣"
+      jobs: [MINER, FARMER]
+      min-level: 50
+      harmonized-mastery-tier: 1
+    timber-tide:
+      enabled: true
+      name: "Timber Tide"
+      title: "Tidewood Keeper"
+      badge: "✥"
+      jobs: [LUMBERJACK, FISHER]
+      min-level: 50
+      harmonized-mastery-tier: 1
+    wildwood:
+      enabled: true
+      name: "Wildwood"
+      title: "Wildwood Stalker"
+      badge: "✤"
+      jobs: [HUNTER, LUMBERJACK]
+      min-level: 50
+      harmonized-mastery-tier: 1
 contracts:
   enabled: true
   timezone: Asia/Jakarta
