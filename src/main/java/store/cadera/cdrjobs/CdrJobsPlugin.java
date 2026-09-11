@@ -11,7 +11,10 @@ import store.cadera.cdrjobs.command.AdminCommand;
 import store.cadera.cdrjobs.command.JobsCommand;
 import store.cadera.cdrjobs.data.Database;
 import store.cadera.cdrjobs.data.ProfessionStore;
+import store.cadera.cdrjobs.data.RebirthStore;
 import store.cadera.cdrjobs.gui.JobsMenu;
+import store.cadera.cdrjobs.gui.RebirthMenu;
+import store.cadera.cdrjobs.integration.VaultEconomyHook;
 import store.cadera.cdrjobs.listener.*;
 import store.cadera.cdrjobs.placeholder.CdrJobsExpansion;
 import store.cadera.cdrjobs.service.*;
@@ -31,6 +34,7 @@ public final class CdrJobsPlugin extends JavaPlugin {
     private FileConfiguration messages;
     private Database database;
     private ProfessionStore professionStore;
+    private RebirthStore rebirthStore;
     private LeaderboardService leaderboardService;
     private LevelService levelService;
     private CdrJobsAPI api;
@@ -57,6 +61,8 @@ public final class CdrJobsPlugin extends JavaPlugin {
             professionStore.setSchemaVersion(9);
             database.backfillFateMilestoneClaims(fateMilestones().keySet());
             leaderboardService = new LeaderboardService(this, getDataFolder());
+            rebirthStore = new RebirthStore(getDataFolder());
+            rebirthStore.connect();
         } catch (Exception exception) {
             getLogger().log(Level.SEVERE, "Failed to initialize SQLite", exception);
             getServer().getPluginManager().disablePlugin(this);
@@ -75,10 +81,13 @@ public final class CdrJobsPlugin extends JavaPlugin {
         LumberjackService lumberjack = new LumberjackService(this, database, professionStore);
         FisherService fisher = new FisherService(this, database, professionStore);
         ProfileService profiles = new ProfileService(database, professionStore);
+        VaultEconomyHook vault = new VaultEconomyHook(this);
+        RebirthService rebirth = new RebirthService(this, database, rebirthStore, vault, profiles);
 
         JobsMenu menu = new JobsMenu(this, database, professionStore, levelService, minerTrials,
                 farmer, hunter, lumberjack, fisher, profiles);
-        JobsCommand jobsCommand = new JobsCommand(this, database, menu, levelService, minerAbility,
+        RebirthMenu rebirthMenu = new RebirthMenu(this, rebirth);
+        JobsCommand jobsCommand = new JobsCommand(this, database, menu, rebirthMenu, levelService, minerAbility,
                 farmer, hunter, lumberjack, fisher, leaderboardService);
         AdminCommand adminCommand = new AdminCommand(this, database, professionStore, progression, hunter);
         registerCommand("cdrjobs", jobsCommand, jobsCommand);
@@ -91,19 +100,22 @@ public final class CdrJobsPlugin extends JavaPlugin {
         fisherListener = new FisherListener(this, progression, fisher, levelService);
 
         for (var listener : List.of(minerListener, farmerListener, hunterListener, lumberjackListener, fisherListener,
-                new MenuListener(menu, minerSkills, farmer, hunter, lumberjack, fisher))) {
+                new MenuListener(menu, minerSkills, farmer, hunter, lumberjack, fisher),
+                new RebirthListener(this, rebirthMenu, rebirth))) {
             getServer().getPluginManager().registerEvents(listener, this);
         }
 
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             new CdrJobsExpansion(this, database, professionStore, levelService, profiles).register();
         }
-        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — LEADERBOARD & PROFILE QOL enabled.");
+        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — RITE OF REBIRTH enabled.");
     }
 
     @Override
     public void onDisable() {
         api = null;
+        try { if (rebirthStore != null) rebirthStore.close(); }
+        catch (SQLException exception) { getLogger().warning(exception.getMessage()); }
         try { if (leaderboardService != null) leaderboardService.close(); }
         catch (SQLException exception) { getLogger().warning(exception.getMessage()); }
         try { if (professionStore != null) professionStore.close(); }
