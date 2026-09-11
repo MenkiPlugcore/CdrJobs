@@ -36,11 +36,13 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
     private final LeaderboardService leaderboards;
     private final MasteryService mastery;
     private final ContractService contracts;
+    private final FateResonanceService resonance;
 
     public JobsCommand(CdrJobsPlugin plugin, Database db, JobsMenu menu, RebirthMenu rebirthMenu,
                        LevelService levels, MinerAbilityService miner, FarmerService farmer,
                        HunterService hunter, LumberjackService lumber, FisherService fisher,
-                       LeaderboardService leaderboards, MasteryService mastery, ContractService contracts) {
+                       LeaderboardService leaderboards, MasteryService mastery, ContractService contracts,
+                       FateResonanceService resonance) {
         this.plugin = plugin;
         this.db = db;
         this.menu = menu;
@@ -54,6 +56,7 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
         this.leaderboards = leaderboards;
         this.mastery = mastery;
         this.contracts = contracts;
+        this.resonance = resonance;
     }
 
     @Override
@@ -78,6 +81,7 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
             case "top", "leaderboard" -> showLeaderboard(player, args);
             case "mastery", "prestige" -> showMastery(player, args);
             case "contracts", "contract" -> showContracts(player, args);
+            case "resonance", "fateresonance" -> showResonance(player, args);
             case "rebirth", "respec" -> openRebirth(player, args);
             case "miner", "skills" -> menu.openMiner(player);
             case "farmer" -> menu.openFarmer(player);
@@ -104,6 +108,43 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
             default -> menu.openMain(player);
         }
         return true;
+    }
+
+    private void showResonance(Player player, String[] args) {
+        if (!resonance.enabled()) {
+            player.sendMessage("§cFate Resonance sedang dinonaktifkan.");
+            return;
+        }
+        if (args.length == 1) {
+            player.sendMessage("§d✦ Fate Resonance §8— §7cross-profession synergy");
+            for (FateResonanceService.State state : resonance.states(player.getUniqueId())) {
+                FateResonanceService.Definition def = state.definition();
+                if (state.unlocked()) {
+                    player.sendMessage("§7- §d" + def.name() + " §8— §f" + resonance.display(state));
+                } else {
+                    player.sendMessage("§7- §8" + def.name() + " §7— " + def.first().displayName() + " "
+                            + state.firstLevel() + "/" + def.minLevel() + " + " + def.second().displayName() + " "
+                            + state.secondLevel() + "/" + def.minLevel());
+                }
+            }
+            player.sendMessage("§7Unlocked: §f" + resonance.unlockedCount(player.getUniqueId())
+                    + " §8• §7Harmonized: §6" + resonance.harmonizedCount(player.getUniqueId())
+                    + " §8• §7Score: §d" + resonance.score(player.getUniqueId()));
+            return;
+        }
+        FateResonanceService.Definition def = resonance.definition(args[1]).orElse(null);
+        if (def == null) {
+            player.sendMessage("§cResonance tidak ditemukan. Gunakan /cdrjobs resonance untuk melihat daftar.");
+            return;
+        }
+        FateResonanceService.State state = resonance.state(player.getUniqueId(), def);
+        player.sendMessage("§d✦ " + def.name());
+        player.sendMessage("§7Path: §f" + def.first().displayName() + " + " + def.second().displayName());
+        player.sendMessage("§7Unlock requirement: §fLv." + def.minLevel() + " pada kedua profession");
+        player.sendMessage("§7Current: §f" + state.firstLevel() + " / " + state.secondLevel());
+        player.sendMessage("§7Status: §f" + resonance.display(state));
+        player.sendMessage("§7Harmonized requirement: §6Mastery " + mastery.roman(def.harmonizedMasteryTier()) + " §7pada kedua profession");
+        player.sendMessage("§7Mastery current: §f" + mastery.roman(state.firstMastery()) + " / " + mastery.roman(state.secondMastery()));
     }
 
     private void showContracts(Player player, String[] args) {
@@ -354,16 +395,21 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
         }
         viewer.sendMessage("§dFate Essence: " + db.getFateEssence(target.getUniqueId()));
         viewer.sendMessage("§6Total Mastery: " + mastery.totalMasteryTiers(target.getUniqueId()) + " tiers");
+        viewer.sendMessage("§dFate Resonance: " + resonance.unlockedCount(target.getUniqueId()) + " unlocked | "
+                + resonance.harmonizedCount(target.getUniqueId()) + " harmonized | score " + resonance.score(target.getUniqueId()));
     }
 
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
-        if (args.length == 1) return List.of("profile", "top", "mastery", "contracts", "rebirth", "stats", "miner", "farmer", "hunter", "lumberjack", "fisher", "trials", "ability");
+        if (args.length == 1) return List.of("profile", "top", "mastery", "contracts", "resonance", "rebirth", "stats", "miner", "farmer", "hunter", "lumberjack", "fisher", "trials", "ability");
         if (args.length == 2 && (args[0].equalsIgnoreCase("trials") || args[0].equalsIgnoreCase("ability")
                 || args[0].equalsIgnoreCase("rebirth") || args[0].equalsIgnoreCase("respec")
                 || args[0].equalsIgnoreCase("mastery") || args[0].equalsIgnoreCase("prestige"))) {
             return List.of("miner", "farmer", "hunter", "lumberjack", "fisher");
+        }
+        if (args.length == 2 && (args[0].equalsIgnoreCase("resonance") || args[0].equalsIgnoreCase("fateresonance"))) {
+            return resonance.definitions().stream().map(FateResonanceService.Definition::id).toList();
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("contracts") || args[0].equalsIgnoreCase("contract"))) {
             return List.of("claim", "reroll");
