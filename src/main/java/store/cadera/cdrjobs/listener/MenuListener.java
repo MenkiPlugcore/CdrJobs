@@ -1,1 +1,82 @@
-package store.cadera.cdrjobs.listener;import org.bukkit.entity.Player;import org.bukkit.event.*;import org.bukkit.event.inventory.InventoryClickEvent;import org.bukkit.inventory.*;import org.bukkit.inventory.meta.ItemMeta;import org.bukkit.persistence.PersistentDataType;import store.cadera.cdrjobs.gui.JobsMenu;import store.cadera.cdrjobs.model.*;import store.cadera.cdrjobs.service.*;public final class MenuListener implements Listener{private final JobsMenu m;private final SkillService miner;private final FarmerService farmer;private final HunterService hunter;private final LumberjackService lumber;private final FisherService fisher;public MenuListener(JobsMenu m,SkillService mi,FarmerService f,HunterService h,LumberjackService l,FisherService fish){this.m=m;miner=mi;farmer=f;hunter=h;lumber=l;fisher=fish;}@EventHandler public void click(InventoryClickEvent e){String t=e.getView().getTitle();if(!ok(t))return;e.setCancelled(true);if(!(e.getWhoClicked() instanceof Player p))return;ItemStack c=e.getCurrentItem();if(c==null||!c.hasItemMeta())return;ItemMeta meta=c.getItemMeta();String a=meta.getPersistentDataContainer().get(m.actionKey(),PersistentDataType.STRING),id=meta.getPersistentDataContainer().get(m.skillKey(),PersistentDataType.STRING);if(a==null)return;try{switch(a){case"open_miner","back_miner"->m.openMiner(p);case"open_miner_trials"->m.openTrials(p);case"open_farmer","back_farmer"->m.openFarmer(p);case"open_farmer_trials"->m.openFarmerTrials(p);case"open_hunter","back_hunter"->m.openHunter(p);case"open_hunter_trials"->m.openHunterTrials(p);case"open_lumber","back_lumber"->m.openLumber(p);case"open_lumber_trials"->m.openLumberTrials(p);case"open_fisher","back_fisher"->m.openFisher(p);case"open_fisher_trials"->m.openFisherTrials(p);case"back_main"->m.openMain(p);case"upgrade_miner_skill"->{miner.tryUpgrade(p,MinerSkill.valueOf(id));m.openMiner(p);}case"upgrade_farmer_skill"->{farmer.tryUpgrade(p,FarmerSkill.valueOf(id));m.openFarmer(p);}case"upgrade_hunter_skill"->{hunter.tryUpgrade(p,HunterSkill.valueOf(id));m.openHunter(p);}case"upgrade_lumber_skill"->{lumber.tryUpgrade(p,LumberjackSkill.valueOf(id));m.openLumber(p);}case"upgrade_fisher_skill"->{fisher.tryUpgrade(p,FisherSkill.valueOf(id));m.openFisher(p);}}}catch(Exception ignored){}}private boolean ok(String t){return t.equals(JobsMenu.MAIN_TITLE)||t.equals(JobsMenu.MINER_TITLE)||t.equals(JobsMenu.TRIALS_TITLE)||t.equals(JobsMenu.FARMER_TITLE)||t.equals(JobsMenu.FARMER_TRIALS_TITLE)||t.equals(JobsMenu.HUNTER_TITLE)||t.equals(JobsMenu.HUNTER_TRIALS_TITLE)||t.equals(JobsMenu.LUMBER_TITLE)||t.equals(JobsMenu.LUMBER_TRIALS_TITLE)||t.equals(JobsMenu.FISHER_TITLE)||t.equals(JobsMenu.FISHER_TRIALS_TITLE);}}
+package store.cadera.cdrjobs.listener;
+
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
+import store.cadera.cdrjobs.gui.JobsMenu;
+import store.cadera.cdrjobs.model.*;
+import store.cadera.cdrjobs.service.*;
+
+public final class MenuListener implements Listener {
+    private final JobsMenu menu;
+    private final SkillService miner;
+    private final FarmerService farmer;
+    private final HunterService hunter;
+    private final LumberjackService lumber;
+    private final FisherService fisher;
+
+    public MenuListener(JobsMenu menu, SkillService miner, FarmerService farmer, HunterService hunter,
+                        LumberjackService lumber, FisherService fisher) {
+        this.menu = menu;
+        this.miner = miner;
+        this.farmer = farmer;
+        this.hunter = hunter;
+        this.lumber = lumber;
+        this.fisher = fisher;
+    }
+
+    @EventHandler
+    public void click(InventoryClickEvent event) {
+        String title = event.getView().getTitle();
+        if (!isCdrJobsMenu(title)) return;
+        event.setCancelled(true);
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+        ItemStack clicked = event.getCurrentItem();
+        if (clicked == null || !clicked.hasItemMeta()) return;
+        ItemMeta meta = clicked.getItemMeta();
+        String action = meta.getPersistentDataContainer().get(menu.actionKey(), PersistentDataType.STRING);
+        String id = meta.getPersistentDataContainer().get(menu.skillKey(), PersistentDataType.STRING);
+        if (action == null) return;
+        try {
+            switch (action) {
+                case "open_profile" -> menu.openProfile(player, player);
+                case "open_miner", "back_miner" -> menu.openMiner(player);
+                case "open_miner_trials" -> menu.openTrials(player);
+                case "open_farmer", "back_farmer" -> menu.openFarmer(player);
+                case "open_farmer_trials" -> menu.openFarmerTrials(player);
+                case "open_hunter", "back_hunter" -> menu.openHunter(player);
+                case "open_hunter_trials" -> menu.openHunterTrials(player);
+                case "open_lumber", "back_lumber" -> menu.openLumber(player);
+                case "open_lumber_trials" -> menu.openLumberTrials(player);
+                case "open_fisher", "back_fisher" -> menu.openFisher(player);
+                case "open_fisher_trials" -> menu.openFisherTrials(player);
+                case "back_main" -> menu.openMain(player);
+                case "upgrade_miner_skill" -> { miner.tryUpgrade(player, MinerSkill.valueOf(id)); menu.openMiner(player); }
+                case "upgrade_farmer_skill" -> { farmer.tryUpgrade(player, FarmerSkill.valueOf(id)); menu.openFarmer(player); }
+                case "upgrade_hunter_skill" -> { hunter.tryUpgrade(player, HunterSkill.valueOf(id)); menu.openHunter(player); }
+                case "upgrade_lumber_skill" -> { lumber.tryUpgrade(player, LumberjackSkill.valueOf(id)); menu.openLumber(player); }
+                case "upgrade_fisher_skill" -> { fisher.tryUpgrade(player, FisherSkill.valueOf(id)); menu.openFisher(player); }
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private boolean isCdrJobsMenu(String title) {
+        return title.equals(JobsMenu.MAIN_TITLE)
+                || title.startsWith(JobsMenu.PROFILE_TITLE_PREFIX)
+                || title.equals(JobsMenu.MINER_TITLE)
+                || title.equals(JobsMenu.TRIALS_TITLE)
+                || title.equals(JobsMenu.FARMER_TITLE)
+                || title.equals(JobsMenu.FARMER_TRIALS_TITLE)
+                || title.equals(JobsMenu.HUNTER_TITLE)
+                || title.equals(JobsMenu.HUNTER_TRIALS_TITLE)
+                || title.equals(JobsMenu.LUMBER_TITLE)
+                || title.equals(JobsMenu.LUMBER_TRIALS_TITLE)
+                || title.equals(JobsMenu.FISHER_TITLE)
+                || title.equals(JobsMenu.FISHER_TRIALS_TITLE);
+    }
+}

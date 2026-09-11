@@ -72,9 +72,12 @@ public final class CdrJobsPlugin extends JavaPlugin {
         HunterService hunter = new HunterService(this, database, professionStore);
         LumberjackService lumberjack = new LumberjackService(this, database, professionStore);
         FisherService fisher = new FisherService(this, database, professionStore);
+        ProfileService profiles = new ProfileService(database, professionStore);
 
-        JobsMenu menu = new JobsMenu(this, database, professionStore, levelService, minerTrials, farmer, hunter, lumberjack, fisher);
-        JobsCommand jobsCommand = new JobsCommand(this, database, menu, levelService, minerAbility, farmer, hunter, lumberjack, fisher);
+        JobsMenu menu = new JobsMenu(this, database, professionStore, levelService, minerTrials,
+                farmer, hunter, lumberjack, fisher, profiles);
+        JobsCommand jobsCommand = new JobsCommand(this, database, menu, levelService, minerAbility,
+                farmer, hunter, lumberjack, fisher);
         AdminCommand adminCommand = new AdminCommand(this, database, professionStore, progression, hunter);
         registerCommand("cdrjobs", jobsCommand, jobsCommand);
         registerCommand("cdrjobsadmin", adminCommand, adminCommand);
@@ -91,16 +94,18 @@ public final class CdrJobsPlugin extends JavaPlugin {
         }
 
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
-            new CdrJobsExpansion(this, database, professionStore, levelService).register();
+            new CdrJobsExpansion(this, database, professionStore, levelService, profiles).register();
         }
-        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — ADMIN & DEBUG TOOLS enabled.");
+        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — ADVENTURER PROFILE enabled.");
     }
 
     @Override
     public void onDisable() {
         api = null;
-        try { if (professionStore != null) professionStore.close(); } catch (SQLException exception) { getLogger().warning(exception.getMessage()); }
-        try { if (database != null) database.close(); } catch (SQLException exception) { getLogger().warning(exception.getMessage()); }
+        try { if (professionStore != null) professionStore.close(); }
+        catch (SQLException exception) { getLogger().warning(exception.getMessage()); }
+        try { if (database != null) database.close(); }
+        catch (SQLException exception) { getLogger().warning(exception.getMessage()); }
     }
 
     public CdrJobsAPI getApi() {
@@ -108,7 +113,8 @@ public final class CdrJobsPlugin extends JavaPlugin {
         return api;
     }
 
-    private void registerCommand(String name, org.bukkit.command.CommandExecutor executor, org.bukkit.command.TabCompleter completer) {
+    private void registerCommand(String name, org.bukkit.command.CommandExecutor executor,
+                                 org.bukkit.command.TabCompleter completer) {
         PluginCommand command = getCommand(name);
         if (command == null) throw new IllegalStateException("Missing command " + name);
         command.setExecutor(executor);
@@ -151,13 +157,15 @@ public final class CdrJobsPlugin extends JavaPlugin {
         ConfigurationSection section = getConfig().getConfigurationSection("fate-essence-milestones");
         if (section != null) {
             for (String key : section.getKeys(false)) {
-                try { result.put(Integer.parseInt(key), section.getInt(key)); } catch (NumberFormatException ignored) {}
+                try { result.put(Integer.parseInt(key), section.getInt(key)); }
+                catch (NumberFormatException ignored) {}
             }
         }
         return result;
     }
 
     public Map<Material, Integer> loadMinerXp() { return loadActivityXp("miner.xp"); }
+
     public Map<Material, Integer> loadActivityXp(String path) {
         Map<Material, Integer> result = new HashMap<>();
         ConfigurationSection section = getConfig().getConfigurationSection(path);

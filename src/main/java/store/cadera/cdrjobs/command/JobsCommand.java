@@ -1,1 +1,141 @@
-package store.cadera.cdrjobs.command;import org.bukkit.*;import org.bukkit.command.*;import org.bukkit.entity.Player;import org.jetbrains.annotations.*;import store.cadera.cdrjobs.CdrJobsPlugin;import store.cadera.cdrjobs.data.Database;import store.cadera.cdrjobs.gui.JobsMenu;import store.cadera.cdrjobs.model.*;import store.cadera.cdrjobs.service.*;import store.cadera.cdrjobs.util.*;import java.util.*;public final class JobsCommand implements CommandExecutor,TabCompleter{private final CdrJobsPlugin plugin;private final Database db;private final JobsMenu menu;private final LevelService levels;private final MinerAbilityService miner;private final FarmerService farmer;private final HunterService hunter;private final LumberjackService lumber;private final FisherService fisher;public JobsCommand(CdrJobsPlugin p,Database d,JobsMenu m,LevelService l,MinerAbilityService mi,FarmerService f,HunterService h,LumberjackService w,FisherService fi){plugin=p;db=d;menu=m;levels=l;miner=mi;farmer=f;hunter=h;lumber=w;fisher=fi;}@Override public boolean onCommand(@NotNull CommandSender s,@NotNull Command c,@NotNull String label,@NotNull String[]a){if(!(s instanceof Player p)){s.sendMessage("Player only");return true;}if(!p.hasPermission("cdrjobs.use")){p.sendMessage(Colors.color(plugin.prefix()+plugin.message("no-permission")));return true;}if(a.length==0){menu.openMain(p);return true;}String sub=a[0].toLowerCase();switch(sub){case"miner","skills"->menu.openMiner(p);case"farmer"->menu.openFarmer(p);case"hunter"->menu.openHunter(p);case"lumberjack","lumber"->menu.openLumber(p);case"fisher","fish"->menu.openFisher(p);case"trials"->{String j=a.length>1?a[1].toLowerCase():"miner";if(j.equals("farmer"))menu.openFarmerTrials(p);else if(j.equals("hunter"))menu.openHunterTrials(p);else if(j.startsWith("lumber"))menu.openLumberTrials(p);else if(j.startsWith("fish"))menu.openFisherTrials(p);else menu.openTrials(p);}case"ability"->{String j=a.length>1?a[1].toLowerCase():"miner";if(j.equals("farmer"))farmer.activate(p);else if(j.equals("hunter"))hunter.activate(p);else if(j.startsWith("lumber"))lumber.activate(p);else if(j.startsWith("fish"))fisher.activate(p);else miner.activateRunicSurge(p);}case"stats"->{Player t=p;if(a.length>1&&p.hasPermission("cdrjobs.admin")){Player x=Bukkit.getPlayerExact(a[1]);if(x!=null)t=x;}p.sendMessage("§3✦ CdrJobs — "+t.getName());for(JobType j:JobType.values()){JobProgress pr=db.getProgress(t.getUniqueId(),j);p.sendMessage("§b"+j.displayName()+" §7• "+JobRanks.title(j,pr.level())+" §f| Lv."+pr.level()+" | "+(pr.level()>=levels.maxLevel()?"MAX":pr.xp()+"/"+levels.xpRequiredForNextLevel(pr.level())));}p.sendMessage("§dFate Essence: "+db.getFateEssence(t.getUniqueId()));}default->menu.openMain(p);}return true;}@Override public @Nullable List<String>onTabComplete(@NotNull CommandSender s,@NotNull Command c,@NotNull String al,@NotNull String[]a){if(a.length==1)return List.of("stats","miner","farmer","hunter","lumberjack","fisher","trials","ability");if(a.length==2&&(a[0].equalsIgnoreCase("trials")||a[0].equalsIgnoreCase("ability")))return List.of("miner","farmer","hunter","lumberjack","fisher");if(a.length==2&&a[0].equalsIgnoreCase("stats")){List<String>n=new ArrayList<>();Bukkit.getOnlinePlayers().forEach(x->n.add(x.getName()));return n;}return List.of();}}
+package store.cadera.cdrjobs.command;
+
+import org.bukkit.Bukkit;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import store.cadera.cdrjobs.CdrJobsPlugin;
+import store.cadera.cdrjobs.data.Database;
+import store.cadera.cdrjobs.gui.JobsMenu;
+import store.cadera.cdrjobs.model.JobProgress;
+import store.cadera.cdrjobs.model.JobType;
+import store.cadera.cdrjobs.service.*;
+import store.cadera.cdrjobs.util.Colors;
+import store.cadera.cdrjobs.util.JobRanks;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+public final class JobsCommand implements CommandExecutor, TabCompleter {
+    private final CdrJobsPlugin plugin;
+    private final Database db;
+    private final JobsMenu menu;
+    private final LevelService levels;
+    private final MinerAbilityService miner;
+    private final FarmerService farmer;
+    private final HunterService hunter;
+    private final LumberjackService lumber;
+    private final FisherService fisher;
+
+    public JobsCommand(CdrJobsPlugin plugin, Database db, JobsMenu menu, LevelService levels,
+                       MinerAbilityService miner, FarmerService farmer, HunterService hunter,
+                       LumberjackService lumber, FisherService fisher) {
+        this.plugin = plugin;
+        this.db = db;
+        this.menu = menu;
+        this.levels = levels;
+        this.miner = miner;
+        this.farmer = farmer;
+        this.hunter = hunter;
+        this.lumber = lumber;
+        this.fisher = fisher;
+    }
+
+    @Override
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
+                             @NotNull String label, @NotNull String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("Player only");
+            return true;
+        }
+        if (!player.hasPermission("cdrjobs.use")) {
+            player.sendMessage(Colors.color(plugin.prefix() + plugin.message("no-permission")));
+            return true;
+        }
+        if (args.length == 0) {
+            menu.openMain(player);
+            return true;
+        }
+
+        String sub = args[0].toLowerCase(Locale.ROOT);
+        switch (sub) {
+            case "profile" -> openProfile(player, args);
+            case "miner", "skills" -> menu.openMiner(player);
+            case "farmer" -> menu.openFarmer(player);
+            case "hunter" -> menu.openHunter(player);
+            case "lumberjack", "lumber" -> menu.openLumber(player);
+            case "fisher", "fish" -> menu.openFisher(player);
+            case "trials" -> {
+                String job = args.length > 1 ? args[1].toLowerCase(Locale.ROOT) : "miner";
+                if (job.equals("farmer")) menu.openFarmerTrials(player);
+                else if (job.equals("hunter")) menu.openHunterTrials(player);
+                else if (job.startsWith("lumber")) menu.openLumberTrials(player);
+                else if (job.startsWith("fish")) menu.openFisherTrials(player);
+                else menu.openTrials(player);
+            }
+            case "ability" -> {
+                String job = args.length > 1 ? args[1].toLowerCase(Locale.ROOT) : "miner";
+                if (job.equals("farmer")) farmer.activate(player);
+                else if (job.equals("hunter")) hunter.activate(player);
+                else if (job.startsWith("lumber")) lumber.activate(player);
+                else if (job.startsWith("fish")) fisher.activate(player);
+                else miner.activateRunicSurge(player);
+            }
+            case "stats" -> sendStats(player, args);
+            default -> menu.openMain(player);
+        }
+        return true;
+    }
+
+    private void openProfile(Player viewer, String[] args) {
+        Player target = viewer;
+        if (args.length > 1) {
+            if (!viewer.hasPermission("cdrjobs.profile.others")) {
+                viewer.sendMessage("§cKamu tidak memiliki izin untuk melihat profile player lain.");
+                return;
+            }
+            target = Bukkit.getPlayerExact(args[1]);
+            if (target == null) {
+                viewer.sendMessage("§cPlayer harus online.");
+                return;
+            }
+        }
+        menu.openProfile(viewer, target);
+    }
+
+    private void sendStats(Player viewer, String[] args) {
+        Player target = viewer;
+        if (args.length > 1 && viewer.hasPermission("cdrjobs.admin")) {
+            Player found = Bukkit.getPlayerExact(args[1]);
+            if (found != null) target = found;
+        }
+        viewer.sendMessage("§3✦ CdrJobs — " + target.getName());
+        for (JobType job : JobType.values()) {
+            JobProgress progress = db.getProgress(target.getUniqueId(), job);
+            viewer.sendMessage("§b" + job.displayName() + " §7• " + JobRanks.title(job, progress.level())
+                    + " §f| Lv." + progress.level() + " | "
+                    + (progress.level() >= levels.maxLevel() ? "MAX" : progress.xp() + "/" + levels.xpRequiredForNextLevel(progress.level())));
+        }
+        viewer.sendMessage("§dFate Essence: " + db.getFateEssence(target.getUniqueId()));
+    }
+
+    @Override
+    public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
+                                                 @NotNull String alias, @NotNull String[] args) {
+        if (args.length == 1) return List.of("profile", "stats", "miner", "farmer", "hunter", "lumberjack", "fisher", "trials", "ability");
+        if (args.length == 2 && (args[0].equalsIgnoreCase("trials") || args[0].equalsIgnoreCase("ability"))) {
+            return List.of("miner", "farmer", "hunter", "lumberjack", "fisher");
+        }
+        if (args.length == 2 && (args[0].equalsIgnoreCase("stats") || args[0].equalsIgnoreCase("profile"))) {
+            List<String> names = new ArrayList<>();
+            Bukkit.getOnlinePlayers().forEach(player -> names.add(player.getName()));
+            return names;
+        }
+        return List.of();
+    }
+}

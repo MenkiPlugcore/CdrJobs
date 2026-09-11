@@ -1,14 +1,14 @@
 name: CdrJobs
-version: '1.0.5'
+version: '1.1.0'
 main: store.cadera.cdrjobs.CdrJobsPlugin
 api-version: '1.21'
 author: CADERA
-description: Fantasy profession progression system by CADERA. Five standalone professions, Fate Essence, skill trees, trials and public API.
+description: Fantasy profession progression system by CADERA. Five standalone professions, Fate Essence, skill trees, trials, Adventurer Profile and public API.
 softdepend: [PlaceholderAPI]
 commands:
   cdrjobs:
     aliases: [jobs, cjobs]
-    description: Open CdrJobs or inspect profession progression.
+    description: Open CdrJobs, Adventurer Profile, or inspect profession progression.
     usage: /cdrjobs
   cdrjobsadmin:
     aliases: [cjobsadmin]
@@ -16,6 +16,8 @@ commands:
     permission: cdrjobs.admin
 permissions:
   cdrjobs.use:
+    default: true
+  cdrjobs.profile.others:
     default: true
   cdrjobs.admin:
     default: op

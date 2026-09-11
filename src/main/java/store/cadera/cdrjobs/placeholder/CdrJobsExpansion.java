@@ -11,6 +11,7 @@ import store.cadera.cdrjobs.model.JobProgress;
 import store.cadera.cdrjobs.model.JobType;
 import store.cadera.cdrjobs.model.MinerTrialProgress;
 import store.cadera.cdrjobs.service.LevelService;
+import store.cadera.cdrjobs.service.ProfileService;
 import store.cadera.cdrjobs.util.JobRanks;
 
 public final class CdrJobsExpansion extends PlaceholderExpansion {
@@ -18,12 +19,15 @@ public final class CdrJobsExpansion extends PlaceholderExpansion {
     private final Database db;
     private final ProfessionStore store;
     private final LevelService levels;
+    private final ProfileService profiles;
 
-    public CdrJobsExpansion(CdrJobsPlugin plugin, Database db, ProfessionStore store, LevelService levels) {
+    public CdrJobsExpansion(CdrJobsPlugin plugin, Database db, ProfessionStore store,
+                            LevelService levels, ProfileService profiles) {
         this.plugin = plugin;
         this.db = db;
         this.store = store;
         this.levels = levels;
+        this.profiles = profiles;
     }
 
     @Override public @NotNull String getIdentifier() { return "cdrjobs"; }
@@ -35,7 +39,33 @@ public final class CdrJobsExpansion extends PlaceholderExpansion {
     public @Nullable String onRequest(OfflinePlayer player, @NotNull String param) {
         if (player == null || player.getUniqueId() == null) return "";
         String query = param.toLowerCase();
+
         if (query.equals("fate_essence")) return String.valueOf(db.getFateEssence(player.getUniqueId()));
+
+        // Legacy Miner placeholders are checked before generic miner_* parsing.
+        if (query.equals("miner_trial_stone") || query.equals("miner_trial_deep") || query.equals("miner_total_ores")) {
+            MinerTrialProgress trial = db.getMinerTrialProgress(player.getUniqueId());
+            return switch (query) {
+                case "miner_trial_stone" -> trial.stoneComplete() ? "COMPLETED" : "IN PROGRESS";
+                case "miner_trial_deep" -> trial.deepComplete() ? "COMPLETED" : "IN PROGRESS";
+                case "miner_total_ores" -> String.valueOf(trial.totalOres());
+                default -> null;
+            };
+        }
+
+        if (query.startsWith("profile_")) {
+            ProfileService.ProfileSnapshot snapshot = profiles.snapshot(player.getUniqueId());
+            return switch (query.substring("profile_".length())) {
+                case "total_level" -> String.valueOf(snapshot.totalLevel());
+                case "highest_profession" -> snapshot.highestJob().displayName();
+                case "highest_level" -> String.valueOf(snapshot.highestLevel());
+                case "trials_completed" -> String.valueOf(snapshot.completedTrials());
+                case "skills_unlocked" -> String.valueOf(snapshot.unlockedSkills());
+                case "awakened_count" -> String.valueOf(snapshot.awakenedJobs().size());
+                case "awakened_paths" -> snapshot.awakenedNames();
+                default -> null;
+            };
+        }
 
         for (JobType job : JobType.values()) {
             String prefix = job.name().toLowerCase() + "_";
@@ -45,20 +75,14 @@ public final class CdrJobsExpansion extends PlaceholderExpansion {
                 return switch (tail) {
                     case "level" -> String.valueOf(progress.level());
                     case "xp" -> String.valueOf(progress.xp());
-                    case "xp_required" -> String.valueOf(levels.xpRequiredForNextLevel(progress.level()));
+                    case "xp_required" -> progress.level() >= levels.maxLevel()
+                            ? "0" : String.valueOf(levels.xpRequiredForNextLevel(progress.level()));
                     case "rank" -> JobRanks.title(job, progress.level());
                     default -> metric(player, job, tail);
                 };
             }
         }
-
-        MinerTrialProgress trial = db.getMinerTrialProgress(player.getUniqueId());
-        return switch (query) {
-            case "miner_trial_stone" -> trial.stoneComplete() ? "COMPLETED" : "IN PROGRESS";
-            case "miner_trial_deep" -> trial.deepComplete() ? "COMPLETED" : "IN PROGRESS";
-            case "miner_total_ores" -> String.valueOf(trial.totalOres());
-            default -> null;
-        };
+        return null;
     }
 
     private String metric(OfflinePlayer player, JobType job, String tail) {

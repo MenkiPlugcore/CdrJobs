@@ -1,4 +1,4 @@
-# CdrJobs v1.0.5 — ADMIN & DEBUG TOOLS
+# CdrJobs v1.1.0 — ADVENTURER PROFILE
 # Production defaults. MENKIESTES SOFTWARE / CADERA
 settings:
   max-level: 100
@@ -25,10 +25,7 @@ hunter:
   xp-multiplier: 1.0
   fallback-mob-xp: 3
   mob-filter:
-    # ALL = configured mobs use custom XP, other mobs use fallback-mob-xp.
-    # WHITELIST = only mobs explicitly present under hunter.xp can reward XP.
     mode: ALL
-    # Blacklist always wins over ALL/WHITELIST. Use Bukkit EntityType names.
     blacklist: []
   xp: { ZOMBIE: 5, SKELETON: 6, CREEPER: 7, SPIDER: 5, CAVE_SPIDER: 6, DROWNED: 7, HUSK: 6, STRAY: 7, BLAZE: 10, ENDERMAN: 10, PIGLIN_BRUTE: 14, WITHER_SKELETON: 12, GUARDIAN: 10, ELDER_GUARDIAN: 40, RAVAGER: 30, EVOKER: 25, WITHER: 120, WARDEN: 150 }
   anti-exploit: { exclude-spawner: true, exclude-breeding: true }

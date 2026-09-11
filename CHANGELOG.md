@@ -1,12 +1,21 @@
 # Changelog
 
+## 1.1.0 — Adventurer Profile
+- Added `/cdrjobs profile [player]` with a dedicated Five Paths profile GUI.
+- Added a Profile button to the main CdrJobs menu.
+- Profile shows total profession level, highest profession, Fate Essence, Trial completion count, unlocked skill count, awakened paths and per-profession activity.
+- Added short-lived profile snapshot caching to reduce repeated SQLite reads from GUI/PlaceholderAPI usage.
+- Added Profile PlaceholderAPI values for total level, highest profession/level, completed Trials, unlocked skills and awakened paths.
+- Fixed legacy Miner Trial placeholders so `miner_trial_*` is resolved before generic `miner_*` parsing.
+- No database schema migration; schema remains `9`.
+
 ## 1.0.5 — Admin & Debug Tools
 - Added `/cdrjobsadmin addessence <player> <amount>` and `/cdrjobsadmin setessence <player> <amount>`.
 - Added `/cdrjobsadmin resetjob <player> <job>`, preserving the Fate milestone claim ledger to prevent duplicate Essence after re-leveling.
 - Added `/cdrjobsadmin resettrial <player> <job>` and `/cdrjobsadmin resetcooldown <player> <job>`.
 - Expanded `/cdrjobsadmin inspect <player>` with counters, trial flags, Miner trial state, all skill ranks and cooldowns.
 - Added `/cdrjobsadmin export <player> [file|console|both]` for support/debug snapshots.
-- Debug exports include version, schema, all five profession levels/XP/ranks, Fate Essence, counters, flags, skills, cooldowns and latest Hunter decision.
+- Hardened Trial reset so non-Miner lifetime statistics survive while Trial progress restarts from zero.
 - No database schema migration; schema remains `9`.
 
 ## 1.0.4 — Hunter QoL & Safety
