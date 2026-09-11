@@ -3,7 +3,7 @@
 **Choose Your Path, Shape Your Fate.**
 
 Standalone production line for five fantasy professions on Paper 1.21.x.
-Current candidate: `v1.3.0 — Profession Mastery`.
+Current candidate: `v1.4.0 — Profession Contracts`.
 
 ## Professions
 - ⛏ Runebound Delver — Miner
@@ -12,22 +12,43 @@ Current candidate: `v1.3.0 — Profession Mastery`.
 - 🪓 Ironbark Warden — Lumberjack
 - 🎣 Tidebound Angler — Fisher
 
-Each profession has Lv.1–100 progression, fantasy ranks, Path of Ascension, scarce global Fate Essence, profession trials, an active ability, awakened endgame path, and post-Lv.100 Mastery.
+Each profession has Lv.1–100 progression, fantasy ranks, Path of Ascension, scarce global Fate Essence, profession trials, active abilities, awakened paths, post-Lv.100 Mastery, and repeatable Contracts.
 
 ## Player features
 - `/cdrjobs` main GUI
-- `/cdrjobs profile [player]` Adventurer Profile
-- `/cdrjobs mastery [job]` / `/cdrjobs prestige [job]` post-100 Mastery
+- `/cdrjobs profile [player]`
+- `/cdrjobs contracts`
+- `/cdrjobs contracts claim <daily|weekly>`
+- `/cdrjobs contracts reroll <daily|weekly>`
+- `/cdrjobs mastery [job]` / `/cdrjobs prestige [job]`
 - `/cdrjobs <job>` skill tree
-- `/cdrjobs trials <job>` Trial progress
-- `/cdrjobs ability <job>` active ability
-- `/cdrjobs stats [player]` compact text stats
-- `/cdrjobs rebirth [job]` / `/cdrjobs respec [job]` skill-tree respec GUI
+- `/cdrjobs trials <job>`
+- `/cdrjobs ability <job>`
+- `/cdrjobs stats [player]`
+- `/cdrjobs rebirth [job]` / `/cdrjobs respec [job]`
+
+## Profession Contracts
+Daily and Weekly Contracts are assigned deterministically per player and cycle. They do not randomly change after relog/restart.
+
+Contract progress consumes the public `ProfessionActionEvent`, which means only activity that already passed CdrJobs anti-exploit checks contributes.
+
+Default behavior:
+```yaml
+contracts:
+  enabled: true
+  timezone: Asia/Jakarta
+  progress-actionbar: false
+  daily-rerolls: 1
+  weekly-rerolls: 1
+```
+
+Admins can create custom definitions in `contracts.definitions` with cadence, profession, target, XP reward, and Fate Essence reward. Daily defaults reward profession XP only; Weekly defaults reward more XP plus one Fate Essence.
+
+At Lv.100, Contract XP flows through the normal progression path into Profession Mastery.
 
 ## Profession Mastery
-After a profession reaches Lv.100, additional profession XP is routed into Mastery instead of being discarded.
+After Lv.100, additional profession XP is routed into persistent Mastery instead of being discarded.
 
-Default curve:
 ```yaml
 mastery:
   enabled: true
@@ -37,62 +58,41 @@ mastery:
   tier-up-sound: true
 ```
 
-Mastery is intentionally cosmetic/status-oriented. It adds prestige tiers, titles, badges and rankings without direct combat/economy/gathering buffs.
+Mastery remains prestige/status-oriented and does not add direct combat, economy, or gathering power buffs.
 
-Mastery commands:
-- `/cdrjobs mastery`
-- `/cdrjobs mastery <job>`
+## Rite of Rebirth
+Rite of Rebirth resets only the selected profession's skill tree and preserves level/XP, Trials, statistics, Fate milestone claims, normal ability cooldowns, and Mastery.
+
+## Leaderboards
+- `/cdrjobs top <job>`
+- `/cdrjobs top total`
+- `/cdrjobs top pvp`
+- `/cdrjobs top activity <job>`
 - `/cdrjobs top mastery <job>`
 - `/cdrjobs top mastery-total`
 
-## Rite of Rebirth
-Rite of Rebirth resets only the selected profession's skill tree. It preserves profession level/XP, Trial progress, statistics, Fate milestone claims, active-ability cooldowns, and Mastery.
-
-```yaml
-rite-of-rebirth:
-  enabled: true
-  cooldown-seconds: 604800
-  refund-percent: 100
-  fee:
-    mode: NONE
-    fate-essence: 0
-    vault: 0.0
-```
-
-Fee modes are `NONE`, `FATE`, and `VAULT`. Vault is a soft dependency and is only needed when `VAULT` mode is selected.
-
-## Leaderboards
-- `/cdrjobs top <job>` — profession level/XP
-- `/cdrjobs top total` — total Five Paths level
-- `/cdrjobs top pvp` — rewarded Hunter PvP kills
-- `/cdrjobs top activity <job>` — profession activity
-- `/cdrjobs top mastery <job>` — profession Mastery
-- `/cdrjobs top mastery-total` — total prestige Mastery XP
-
 ## PlaceholderAPI
-Global/profile Mastery:
-- `%cdrjobs_profile_mastery_tiers%`
-- `%cdrjobs_profile_mastery_xp%`
+Contracts support both `daily` and `weekly` variants:
+- `%cdrjobs_contract_daily_name%`
+- `%cdrjobs_contract_daily_job%`
+- `%cdrjobs_contract_daily_progress%`
+- `%cdrjobs_contract_daily_target%`
+- `%cdrjobs_contract_daily_percent%`
+- `%cdrjobs_contract_daily_complete%`
+- `%cdrjobs_contract_daily_claimed%`
+- `%cdrjobs_contract_daily_reward_xp%`
+- `%cdrjobs_contract_daily_reward_fate%`
+- `%cdrjobs_contract_daily_rerolls_left%`
 
-Per profession (replace `<job>` with miner/farmer/hunter/lumberjack/fisher):
-- `%cdrjobs_<job>_mastery_tier%`
-- `%cdrjobs_<job>_mastery_roman%`
-- `%cdrjobs_<job>_mastery_xp%`
-- `%cdrjobs_<job>_mastery_xp_required%`
-- `%cdrjobs_<job>_mastery_total_xp%`
-- `%cdrjobs_<job>_mastery_title%`
-- `%cdrjobs_<job>_mastery_badge%`
-- `%cdrjobs_<job>_mastery_display%`
-
-Existing profile and legacy Miner placeholders remain supported.
+Replace `daily` with `weekly` for Weekly Contract placeholders. Existing Profile, Mastery, profession, Hunter and legacy Miner placeholders remain supported.
 
 ## Production systems
 - SQLite persistence + non-destructive schema creation
 - one-time Fate milestone claim ledger
-- post-Lv.100 Mastery stored in existing profession counters
 - profession-specific anti-exploit rules
+- deterministic Daily/Weekly Contracts on accepted profession actions
+- post-Lv.100 Mastery
 - transactional Rebirth respec/refund handling
-- configurable XP curves
 - cached leaderboard reads
 - PlaceholderAPI optional
 - Vault optional for Rebirth economy fees
@@ -101,25 +101,10 @@ Existing profile and legacy Miner placeholders remain supported.
 - granular admin reset/debug/export tools
 
 ## Admin commands
-- `/cdrjobsadmin diagnose`
-- `/cdrjobsadmin inspect <player>`
-- `/cdrjobsadmin hunterdebug <player>`
-- `/cdrjobsadmin reload`
-- `/cdrjobsadmin reset <player>`
-- `/cdrjobsadmin resetjob <player> <job>`
-- `/cdrjobsadmin resettrial <player> <job>`
-- `/cdrjobsadmin resetcooldown <player> <job>`
-- `/cdrjobsadmin forcerespec <player> <job>`
-- `/cdrjobsadmin addxp <player> [job] <amount>`
-- `/cdrjobsadmin setlevel <player> [job] <level>`
-- `/cdrjobsadmin addessence <player> <amount>`
-- `/cdrjobsadmin setessence <player> <amount>`
-- `/cdrjobsadmin addmasteryxp <player> <job> <amount>`
-- `/cdrjobsadmin setmastery <player> <job> <tier>`
-- `/cdrjobsadmin export <player> [file|console|both]`
+Existing admin/debug commands remain available, including progression, Fate, Mastery, Rebirth, reset, inspect and export tools.
 
 ## Server testing
-See [`docs/TESTING.md`](docs/TESTING.md), [`docs/RELEASE_PROCESS.md`](docs/RELEASE_PROCESS.md), and [`docs/updates/v1.3.0.md`](docs/updates/v1.3.0.md).
+See [`docs/TESTING.md`](docs/TESTING.md), [`docs/RELEASE_PROCESS.md`](docs/RELEASE_PROCESS.md), and [`docs/updates/v1.4.0.md`](docs/updates/v1.4.0.md).
 
 ## Developer API
 See [`docs/API.md`](docs/API.md).
