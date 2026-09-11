@@ -91,7 +91,7 @@ public final class CdrJobsPlugin extends JavaPlugin {
         RebirthMenu rebirthMenu = new RebirthMenu(this, rebirth);
         JobsCommand jobsCommand = new JobsCommand(this, database, menu, rebirthMenu, levelService, minerAbility,
                 farmer, hunter, lumberjack, fisher, leaderboardService, mastery, contracts);
-        AdminCommand adminCommand = new AdminCommand(this, database, professionStore, progression, hunter, rebirth, mastery, contracts);
+        AdminCommand adminCommand = new AdminCommand(this, database, professionStore, progression, hunter, rebirth, mastery);
         registerCommand("cdrjobs", jobsCommand, jobsCommand);
         registerCommand("cdrjobsadmin", adminCommand, adminCommand);
 
