@@ -11,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import store.cadera.cdrjobs.CdrJobsPlugin;
 import store.cadera.cdrjobs.data.Database;
 import store.cadera.cdrjobs.gui.JobsMenu;
+import store.cadera.cdrjobs.gui.RebirthMenu;
 import store.cadera.cdrjobs.model.JobProgress;
 import store.cadera.cdrjobs.model.JobType;
 import store.cadera.cdrjobs.service.*;
@@ -25,6 +26,7 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
     private final CdrJobsPlugin plugin;
     private final Database db;
     private final JobsMenu menu;
+    private final RebirthMenu rebirthMenu;
     private final LevelService levels;
     private final MinerAbilityService miner;
     private final FarmerService farmer;
@@ -33,12 +35,14 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
     private final FisherService fisher;
     private final LeaderboardService leaderboards;
 
-    public JobsCommand(CdrJobsPlugin plugin, Database db, JobsMenu menu, LevelService levels,
-                       MinerAbilityService miner, FarmerService farmer, HunterService hunter,
-                       LumberjackService lumber, FisherService fisher, LeaderboardService leaderboards) {
+    public JobsCommand(CdrJobsPlugin plugin, Database db, JobsMenu menu, RebirthMenu rebirthMenu,
+                       LevelService levels, MinerAbilityService miner, FarmerService farmer,
+                       HunterService hunter, LumberjackService lumber, FisherService fisher,
+                       LeaderboardService leaderboards) {
         this.plugin = plugin;
         this.db = db;
         this.menu = menu;
+        this.rebirthMenu = rebirthMenu;
         this.levels = levels;
         this.miner = miner;
         this.farmer = farmer;
@@ -68,6 +72,7 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
         switch (sub) {
             case "profile" -> openProfile(player, args);
             case "top", "leaderboard" -> showLeaderboard(player, args);
+            case "rebirth", "respec" -> openRebirth(player, args);
             case "miner", "skills" -> menu.openMiner(player);
             case "farmer" -> menu.openFarmer(player);
             case "hunter" -> menu.openHunter(player);
@@ -93,6 +98,23 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
             default -> menu.openMain(player);
         }
         return true;
+    }
+
+    private void openRebirth(Player player, String[] args) {
+        if (!player.hasPermission("cdrjobs.rebirth")) {
+            player.sendMessage(Colors.color(plugin.prefix() + plugin.message("no-permission")));
+            return;
+        }
+        if (args.length == 1) {
+            rebirthMenu.openSelect(player);
+            return;
+        }
+        JobType job = parseJob(args[1]);
+        if (job == null) {
+            player.sendMessage("§cJob tidak valid. Gunakan miner, farmer, hunter, lumberjack, atau fisher.");
+            return;
+        }
+        rebirthMenu.openConfirm(player, job);
     }
 
     private void openProfile(Player viewer, String[] args) {
@@ -196,8 +218,8 @@ public final class JobsCommand implements CommandExecutor, TabCompleter {
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
-        if (args.length == 1) return List.of("profile", "top", "stats", "miner", "farmer", "hunter", "lumberjack", "fisher", "trials", "ability");
-        if (args.length == 2 && (args[0].equalsIgnoreCase("trials") || args[0].equalsIgnoreCase("ability"))) {
+        if (args.length == 1) return List.of("profile", "top", "rebirth", "stats", "miner", "farmer", "hunter", "lumberjack", "fisher", "trials", "ability");
+        if (args.length == 2 && (args[0].equalsIgnoreCase("trials") || args[0].equalsIgnoreCase("ability") || args[0].equalsIgnoreCase("rebirth") || args[0].equalsIgnoreCase("respec"))) {
             return List.of("miner", "farmer", "hunter", "lumberjack", "fisher");
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("top")) {
