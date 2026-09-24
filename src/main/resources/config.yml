@@ -1,4 +1,4 @@
-# CdrJobs v1.6.0 — PUBLIC API v2 & GUI REFRESH
+# CdrJobs v1.7.0 — LIVING PROFESSIONS
 # Production defaults. MENKIESTES SOFTWARE / CADERA
 settings:
   max-level: 100
@@ -6,6 +6,72 @@ settings:
   levelup-sound: true
   save-on-disable: true
   xp-curve: { base-xp: 100, linear-growth: 0, quadratic-growth: 15 }
+
+living-professions:
+  enabled: true
+  # Worlds listed here keep normal CdrJobs progression but skip Living Professions presentation/events.
+  world-blacklist: []
+  feedback:
+    actionbar: true
+    levelup-title: true
+    mastery-title: true
+    contract-title: true
+    momentum-stage-sound: true
+    encounter-sound: true
+    fate-sound: true
+    particles: true
+  momentum:
+    enabled: true
+    expire-seconds: 45
+    actions-per-stage: 12
+    max-stage: 4
+    xp-bonus-per-stage-percent: 2.0
+    max-xp-bonus-percent: 8.0
+  encounters:
+    enabled: true
+    chance-percent: 1.5
+    cooldown-seconds: 300
+    definitions:
+      MINER:
+        name: "Runic Vein"
+        intro: "Something ancient stirs beneath the stone..."
+        target: 8
+        duration-seconds: 45
+        reward-xp: 320
+      FARMER:
+        name: "Blessed Harvest"
+        intro: "The soil answers your presence. A blessed harvest has begun."
+        target: 20
+        duration-seconds: 60
+        reward-xp: 300
+      HUNTER:
+        name: "Marked Prey"
+        intro: "A dangerous presence has been marked by your Path."
+        target: 6
+        duration-seconds: 90
+        reward-xp: 350
+      LUMBERJACK:
+        name: "Ancient Grove"
+        intro: "The forest remembers your axe. An ancient grove is watching."
+        target: 12
+        duration-seconds: 60
+        reward-xp: 320
+      FISHER:
+        name: "Restless Waters"
+        intro: "The water stirs. A rare shoal has entered your reach."
+        target: 3
+        duration-seconds: 120
+        reward-xp: 280
+  fate-whispers:
+    enabled: true
+    chance-percent: 0.35
+    cooldown-seconds: 300
+  milestones:
+    enabled: true
+    thresholds: [1000, 5000, 25000, 100000]
+  session:
+    enabled: true
+
 leaderboards:
   limit: 10
   cache-seconds: 30
