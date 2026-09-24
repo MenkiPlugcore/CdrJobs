@@ -10,6 +10,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import store.cadera.cdrjobs.api.CdrJobsAPI;
 import store.cadera.cdrjobs.command.AdminCommand;
 import store.cadera.cdrjobs.command.JobsCommand;
+import store.cadera.cdrjobs.command.LivingJobsCommand;
 import store.cadera.cdrjobs.data.Database;
 import store.cadera.cdrjobs.data.ProfessionStore;
 import store.cadera.cdrjobs.data.RebirthStore;
@@ -44,6 +45,7 @@ public final class CdrJobsPlugin extends JavaPlugin {
     private HunterListener hunterListener;
     private LumberjackListener lumberjackListener;
     private FisherListener fisherListener;
+    private LivingProfessionsService livingProfessions;
 
     @Override
     public void onEnable() {
@@ -90,6 +92,7 @@ public final class CdrJobsPlugin extends JavaPlugin {
         RebirthService rebirth = new RebirthService(this, database, rebirthStore, vault, profiles);
         ContractService contracts = new ContractService(this, database, professionStore, progression);
         FateResonanceService resonance = new FateResonanceService(this, database, mastery);
+        livingProfessions = new LivingProfessionsService(this, database, professionStore, progression, levelService, resonance);
 
         api = new CdrJobsAPI(database, professionStore, progression, profiles, mastery,
                 contracts, resonance, leaderboardService);
@@ -100,8 +103,9 @@ public final class CdrJobsPlugin extends JavaPlugin {
         RebirthMenu rebirthMenu = new RebirthMenu(this, rebirth);
         JobsCommand jobsCommand = new JobsCommand(this, database, menu, rebirthMenu, levelService, minerAbility,
                 farmer, hunter, lumberjack, fisher, leaderboardService, mastery, contracts, resonance);
+        LivingJobsCommand playerCommand = new LivingJobsCommand(jobsCommand, livingProfessions);
         AdminCommand adminCommand = new AdminCommand(this, database, professionStore, progression, hunter, rebirth, mastery, resonance);
-        registerCommand("cdrjobs", jobsCommand, jobsCommand);
+        registerCommand("cdrjobs", playerCommand, playerCommand);
         registerCommand("cdrjobsadmin", adminCommand, adminCommand);
 
         minerListener = new MinerListener(this, database, progression, minerSkills, levelService, minerTrials, minerAbility);
@@ -116,6 +120,7 @@ public final class CdrJobsPlugin extends JavaPlugin {
                 hunterListener,
                 lumberjackListener,
                 fisherListener,
+                livingProfessions,
                 new MenuListener(this, database, professionStore, menu, minerSkills, farmer, hunter, lumberjack, fisher),
                 new RebirthListener(this, rebirthMenu, rebirth),
                 new ContractListener(contracts),
@@ -127,7 +132,7 @@ public final class CdrJobsPlugin extends JavaPlugin {
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             new CdrJobsExpansion(this, database, professionStore, levelService, profiles, mastery, contracts, resonance).register();
         }
-        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — PUBLIC API v2 + GUI HARDENING enabled.");
+        getLogger().info("CdrJobs v" + getPluginMeta().getVersion() + " — LIVING PROFESSIONS enabled.");
     }
 
     @Override

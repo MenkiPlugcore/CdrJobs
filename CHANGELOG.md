@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.7.0 — Living Professions
+- Added the Living Professions engine on top of the accepted `ProfessionActionEvent` stream so new gameplay feedback inherits existing profession anti-exploit validation.
+- Added Profession Momentum with configurable inactivity expiry, actions per stage, stage cap, XP bonus per stage, and maximum XP bonus.
+- Momentum uses fractional XP carry so low-value profession actions receive the configured percentage fairly over time instead of losing bonuses to integer rounding.
+- Added richer profession actionbar feedback with current Job level/progress, Momentum bonus and active Encounter progress.
+- Added profession-specific Path Encounters for Miner (`Runic Vein`), Farmer (`Blessed Harvest`), Hunter (`Marked Prey`), Lumberjack (`Ancient Grove`) and Fisher (`Restless Waters`).
+- Added configurable Encounter chance, cooldown, target, duration and profession XP reward.
+- Encounter progress/expiry persists through relog/restart using existing `profession_counters` / `profession_flags`; Encounter cooldowns reuse existing ability cooldown storage.
+- Added Fate Whispers for unlocked Fate Resonance pairings as cosmetic/status feedback without combat, gathering, drop-rate or economy power.
+- Added persistent accepted-action Milestones with default thresholds at 1,000 / 5,000 / 25,000 / 100,000 and profession-specific milestone titles.
+- Added level-up, Mastery tier, Contract completion, Encounter and Milestone presentation feedback with configurable titles, sounds and particles.
+- Added per-login Adventure Session tracking with `/cdrjobs session` for actions, XP, level-ups, completed Encounters, Momentum and lifetime accepted-action progress.
+- Added `living-professions.world-blacklist`; blacklisted worlds keep normal CdrJobs profession progression while suppressing Living Professions effects.
+- Living Professions awards no Vault money or direct economy currency; new rewards remain profession XP/status focused.
+- Existing Public API remains v2; no breaking API change.
+- No database schema migration; schema remains `9`.
+
 ## 1.6.0 — Public API v2 & GUI Refresh
 - Raised `CdrJobsAPI.API_VERSION` from `1` to `2` while retaining all v1 read/progression methods.
 - Added Bukkit `ServicesManager` publication for `CdrJobsAPI`; `CdrJobsPlugin#getApi()` remains supported.
