@@ -34,16 +34,16 @@ import java.util.concurrent.ThreadLocalRandom;
 /**
  * v1.7.0 Living Professions layer.
  *
- * This service deliberately consumes only accepted ProfessionActionEvent activity,
- * so Momentum, Encounters and Milestones inherit the profession anti-exploit gates.
- * It stores persistent encounter/milestone state in the existing profession tables;
- * no schema migration is required.
+ * Action-driven features consume only accepted ProfessionActionEvent activity,
+ * so Momentum, Encounters and Milestones inherit existing profession anti-exploit gates.
+ * Persistent state reuses existing generic profession tables; schema remains unchanged.
  */
 public final class LivingProfessionsService implements Listener {
     private static final String ENCOUNTER_ACTIVE = "living_encounter_active";
     private static final String ENCOUNTER_PROGRESS = "living_encounter_progress";
     private static final String ENCOUNTER_EXPIRES = "living_encounter_expires";
     private static final String LIFETIME_ACTIONS = "living_actions";
+    private static final String WHISPER_COOLDOWN = "living_fate_whisper";
 
     private final CdrJobsPlugin plugin;
     private final Database database;
@@ -55,7 +55,12 @@ public final class LivingProfessionsService implements Listener {
     private final Map<PlayerJobKey, MomentumState> momentum = new HashMap<>();
     private final Map<PlayerJobKey, Long> recentActions = new HashMap<>();
     private final Map<UUID, SessionState> sessions = new HashMap<>();
+
     private final Map<UUID, EncounterState> activeEncounters = new HashMap<>();
+    private final Set<UUID> encounterStateLoaded = new HashSet<>();
+    private final Map<PlayerJobKey, Long> encounterReadyAt = new HashMap<>();
+    private final Map<UUID, Long> whisperReadyAt = new HashMap<>();
+
     private final Map<UUID, PendingFeedback> pendingFeedback = new HashMap<>();
     private final Set<UUID> feedbackScheduled = new HashSet<>();
     private final Set<PlayerJobKey> bonusGuard = new HashSet<>();
@@ -106,6 +111,8 @@ public final class LivingProfessionsService implements Listener {
     public void onXp(ProfessionXpGainEvent event) {
         if (!enabled()) return;
         Player player = event.getPlayer();
+        if (worldBlocked(player)) return;
+
         JobType job = event.getProfession();
         PlayerJobKey key = new PlayerJobKey(player.getUniqueId(), job);
         long gained = Math.max(0L, event.getGainedXp());
@@ -113,8 +120,7 @@ public final class LivingProfessionsService implements Listener {
 
         session(player).addXp(job, gained);
 
-        if (bonusGuard.contains(key)) return;
-        if (rewardGuard.contains(key)) return;
+        if (bonusGuard.contains(key) || rewardGuard.contains(key)) return;
 
         long bonus = 0L;
         Long actionAt = recentActions.get(key);
@@ -139,6 +145,8 @@ public final class LivingProfessionsService implements Listener {
     public void onLevelUp(ProfessionLevelUpEvent event) {
         if (!enabled()) return;
         Player player = event.getPlayer();
+        if (worldBlocked(player)) return;
+
         session(player).addLevel(event.getProfession());
         if (!plugin.getConfig().getBoolean("living-professions.feedback.levelup-title", true)) return;
 
@@ -150,8 +158,10 @@ public final class LivingProfessionsService implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onMasteryTier(MasteryTierUpEvent event) {
-        if (!enabled() || !plugin.getConfig().getBoolean("living-professions.feedback.mastery-title", true)) return;
         Player player = event.getPlayer();
+        if (!enabled() || worldBlocked(player)
+                || !plugin.getConfig().getBoolean("living-professions.feedback.mastery-title", true)) return;
+
         player.sendTitle("§6✦ MASTERY ADVANCED ✦",
                 "§f" + event.getProfession().displayName() + " §8• §6Tier " + event.getNewTier(),
                 8, 45, 10);
@@ -160,8 +170,11 @@ public final class LivingProfessionsService implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onContractComplete(ContractCompleteEvent event) {
-        if (!enabled() || !plugin.getConfig().getBoolean("living-professions.feedback.contract-title", true)) return;
-        event.getPlayer().sendTitle("§6✦ CONTRACT COMPLETE ✦",
+        Player player = event.getPlayer();
+        if (!enabled() || worldBlocked(player)
+                || !plugin.getConfig().getBoolean("living-professions.feedback.contract-title", true)) return;
+
+        player.sendTitle("§6✦ CONTRACT COMPLETE ✦",
                 "§f" + event.getProfession().displayName() + " §8• §e" + event.getCadence(),
                 6, 36, 8);
     }
@@ -171,10 +184,14 @@ public final class LivingProfessionsService implements Listener {
         UUID uuid = event.getPlayer().getUniqueId();
         sessions.remove(uuid);
         activeEncounters.remove(uuid);
+        encounterStateLoaded.remove(uuid);
+        whisperReadyAt.remove(uuid);
         pendingFeedback.remove(uuid);
         feedbackScheduled.remove(uuid);
+
         momentum.keySet().removeIf(key -> key.player().equals(uuid));
         recentActions.keySet().removeIf(key -> key.player().equals(uuid));
+        encounterReadyAt.keySet().removeIf(key -> key.player().equals(uuid));
         bonusGuard.removeIf(key -> key.player().equals(uuid));
         rewardGuard.removeIf(key -> key.player().equals(uuid));
     }
@@ -197,6 +214,7 @@ public final class LivingProfessionsService implements Listener {
             long levelUps = state.levels.getOrDefault(job, 0L);
             long encounters = state.encounters.getOrDefault(job, 0L);
             if (actions == 0L && xp == 0L && levelUps == 0L && encounters == 0L) continue;
+
             any = true;
             double bonus = currentMomentumBonus(player.getUniqueId(), job);
             long lifetime = store.getCounter(player.getUniqueId(), job.name(), LIFETIME_ACTIONS);
@@ -223,9 +241,13 @@ public final class LivingProfessionsService implements Listener {
 
     private void updateMomentum(Player player, PlayerJobKey key, long amount, long now) {
         if (!plugin.getConfig().getBoolean("living-professions.momentum.enabled", true)) return;
-        long expire = Math.max(5L, plugin.getConfig().getLong("living-professions.momentum.expire-seconds", 45L)) * 1000L;
-        int perStage = Math.max(1, plugin.getConfig().getInt("living-professions.momentum.actions-per-stage", 12));
-        int maxStage = Math.max(1, plugin.getConfig().getInt("living-professions.momentum.max-stage", 4));
+
+        long expire = Math.max(5L,
+                plugin.getConfig().getLong("living-professions.momentum.expire-seconds", 45L)) * 1000L;
+        int perStage = Math.max(1,
+                plugin.getConfig().getInt("living-professions.momentum.actions-per-stage", 12));
+        int maxStage = Math.max(1,
+                plugin.getConfig().getInt("living-professions.momentum.max-stage", 4));
 
         MomentumState state = momentum.computeIfAbsent(key, ignored -> new MomentumState());
         if (state.lastAction > 0L && now - state.lastAction > expire) {
@@ -240,8 +262,10 @@ public final class LivingProfessionsService implements Listener {
         state.stage = Math.min(maxStage, (int) (state.actions / perStage));
         state.lastAction = now;
 
-        if (state.stage > oldStage && plugin.getConfig().getBoolean("living-professions.feedback.momentum-stage-sound", true)) {
-            player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.45f, 1.35f + Math.min(0.35f, state.stage * 0.07f));
+        if (state.stage > oldStage
+                && plugin.getConfig().getBoolean("living-professions.feedback.momentum-stage-sound", true)) {
+            player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP,
+                    0.45f, 1.35f + Math.min(0.35f, state.stage * 0.07f));
         }
     }
 
@@ -250,7 +274,8 @@ public final class LivingProfessionsService implements Listener {
         MomentumState state = momentum.get(key);
         if (state == null || state.stage <= 0) return 0L;
 
-        long expire = Math.max(5L, plugin.getConfig().getLong("living-professions.momentum.expire-seconds", 45L)) * 1000L;
+        long expire = Math.max(5L,
+                plugin.getConfig().getLong("living-professions.momentum.expire-seconds", 45L)) * 1000L;
         if (System.currentTimeMillis() - state.lastAction > expire) return 0L;
 
         double percent = currentMomentumBonus(player.getUniqueId(), key.job());
@@ -258,6 +283,7 @@ public final class LivingProfessionsService implements Listener {
 
         double raw = (gainedXp * percent / 100D) + state.fractionalBonus;
         if (!Double.isFinite(raw) || raw <= 0D) return 0L;
+
         long bonus = raw >= Long.MAX_VALUE ? Long.MAX_VALUE : (long) Math.floor(raw);
         state.fractionalBonus = raw - bonus;
         return Math.max(0L, bonus);
@@ -267,16 +293,21 @@ public final class LivingProfessionsService implements Listener {
         if (!plugin.getConfig().getBoolean("living-professions.momentum.enabled", true)) return 0D;
         MomentumState state = momentum.get(new PlayerJobKey(uuid, job));
         if (state == null || state.stage <= 0) return 0D;
-        long expire = Math.max(5L, plugin.getConfig().getLong("living-professions.momentum.expire-seconds", 45L)) * 1000L;
+
+        long expire = Math.max(5L,
+                plugin.getConfig().getLong("living-professions.momentum.expire-seconds", 45L)) * 1000L;
         if (System.currentTimeMillis() - state.lastAction > expire) return 0D;
 
-        double perStage = Math.max(0D, plugin.getConfig().getDouble("living-professions.momentum.xp-bonus-per-stage-percent", 2D));
-        double max = Math.max(0D, plugin.getConfig().getDouble("living-professions.momentum.max-xp-bonus-percent", 8D));
+        double perStage = Math.max(0D,
+                plugin.getConfig().getDouble("living-professions.momentum.xp-bonus-per-stage-percent", 2D));
+        double max = Math.max(0D,
+                plugin.getConfig().getDouble("living-professions.momentum.max-xp-bonus-percent", 8D));
         return Math.min(max, state.stage * perStage);
     }
 
     private void queueFeedback(Player player, JobType job, long gainedXp) {
         if (!plugin.getConfig().getBoolean("living-professions.feedback.actionbar", true)) return;
+
         UUID uuid = player.getUniqueId();
         PendingFeedback previous = pendingFeedback.get(uuid);
         if (previous != null && previous.job == job) {
@@ -290,7 +321,7 @@ public final class LivingProfessionsService implements Listener {
             feedbackScheduled.remove(uuid);
             PendingFeedback pending = pendingFeedback.remove(uuid);
             Player online = plugin.getServer().getPlayer(uuid);
-            if (online == null || pending == null || !online.isOnline()) return;
+            if (online == null || pending == null || !online.isOnline() || worldBlocked(online)) return;
             sendActionbar(online, pending);
         });
     }
@@ -298,7 +329,9 @@ public final class LivingProfessionsService implements Listener {
     private void sendActionbar(Player player, PendingFeedback pending) {
         JobProgress progress = database.getProgress(player.getUniqueId(), pending.job);
         double momentumBonus = currentMomentumBonus(player.getUniqueId(), pending.job);
-        String momentumText = momentumBonus > 0D ? " • Momentum +" + formatPercent(momentumBonus) + "%" : "";
+        String momentumText = momentumBonus > 0D
+                ? " • Momentum +" + formatPercent(momentumBonus) + "%" : "";
+
         EncounterState encounter = encounterFor(player.getUniqueId(), System.currentTimeMillis());
         String encounterText = "";
         if (encounter != null && encounter.job == pending.job) {
@@ -320,15 +353,20 @@ public final class LivingProfessionsService implements Listener {
         player.sendActionBar(Component.text(text));
     }
 
+    /** Loads persistent encounter state at most once per login, then serves the hot path from memory. */
     private EncounterState encounterFor(UUID uuid, long now) {
         EncounterState cached = activeEncounters.get(uuid);
         if (cached != null) {
-            if (cached.expiresAt > now && store.getFlag(uuid, cached.job.name(), ENCOUNTER_ACTIVE)) return cached;
-            expireEncounter(uuid, cached, now);
+            if (cached.expiresAt > now) return cached;
+            clearEncounter(uuid, cached);
+            return null;
         }
+
+        if (!encounterStateLoaded.add(uuid)) return null;
 
         for (JobType job : JobType.values()) {
             if (!store.getFlag(uuid, job.name(), ENCOUNTER_ACTIVE)) continue;
+
             long expiresAt = store.getCounter(uuid, job.name(), ENCOUNTER_EXPIRES);
             long progress = store.getCounter(uuid, job.name(), ENCOUNTER_PROGRESS);
             EncounterState loaded = new EncounterState(job, progress, expiresAt);
@@ -336,6 +374,7 @@ public final class LivingProfessionsService implements Listener {
                 clearEncounter(uuid, loaded);
                 continue;
             }
+
             activeEncounters.put(uuid, loaded);
             return loaded;
         }
@@ -344,34 +383,43 @@ public final class LivingProfessionsService implements Listener {
 
     private void maybeStartEncounter(Player player, JobType job, ProfessionActionType action, long now) {
         if (!plugin.getConfig().getBoolean("living-professions.encounters.enabled", true)) return;
-        EncounterDefinition def = definition(job);
-        if (def.target <= 0L || def.durationSeconds <= 0L || def.rewardXp < 0L) return;
         if (action != actionFor(job)) return;
 
-        long readyAt = store.getAbilityReadyAt(player.getUniqueId(), encounterCooldownKey(job));
-        if (readyAt > now) return;
-
         double chance = Math.max(0D, Math.min(100D,
-                plugin.getConfig().getDouble("living-professions.encounters.chance-percent", 1.0D)));
+                plugin.getConfig().getDouble("living-professions.encounters.chance-percent", 1.5D)));
         if (chance <= 0D || ThreadLocalRandom.current().nextDouble(100D) >= chance) return;
 
+        PlayerJobKey key = new PlayerJobKey(player.getUniqueId(), job);
+        long readyAt = encounterReadyAt.computeIfAbsent(key,
+                ignored -> store.getAbilityReadyAt(player.getUniqueId(), encounterCooldownKey(job)));
+        if (readyAt > now) return;
+
+        EncounterDefinition def = definition(job);
         long expiresAt = now + def.durationSeconds * 1000L;
         long cooldown = Math.max(0L,
                 plugin.getConfig().getLong("living-professions.encounters.cooldown-seconds", 300L)) * 1000L;
+        long nextReady = now + cooldown;
+
         EncounterState state = new EncounterState(job, 0L, expiresAt);
         activeEncounters.put(player.getUniqueId(), state);
+        encounterStateLoaded.add(player.getUniqueId());
+        encounterReadyAt.put(key, nextReady);
+
         store.setFlag(player.getUniqueId(), job.name(), ENCOUNTER_ACTIVE, true);
         store.setCounter(player.getUniqueId(), job.name(), ENCOUNTER_PROGRESS, 0L);
         store.setCounter(player.getUniqueId(), job.name(), ENCOUNTER_EXPIRES, expiresAt);
-        store.setAbilityReadyAt(player.getUniqueId(), encounterCooldownKey(job), now + cooldown);
+        store.setAbilityReadyAt(player.getUniqueId(), encounterCooldownKey(job), nextReady);
 
-        player.sendTitle("§d✦ PATH ENCOUNTER ✦", "§f" + def.name + " §8• §7" + def.target + " actions", 8, 44, 10);
+        player.sendTitle("§d✦ PATH ENCOUNTER ✦",
+                "§f" + def.name + " §8• §7" + def.target + " actions", 8, 44, 10);
         player.sendMessage("§8[§dCdrJobs§8] §f" + def.intro);
+
         if (plugin.getConfig().getBoolean("living-professions.feedback.encounter-sound", true)) {
             player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.75f, 0.8f);
         }
         if (plugin.getConfig().getBoolean("living-professions.feedback.particles", true)) {
-            player.spawnParticle(Particle.ENCHANT, player.getLocation().add(0, 1.0, 0), 18, 0.6, 0.7, 0.6, 0.03);
+            player.spawnParticle(Particle.ENCHANT, player.getLocation().add(0, 1.0, 0),
+                    18, 0.6, 0.7, 0.6, 0.03);
         }
     }
 
@@ -391,13 +439,18 @@ public final class LivingProfessionsService implements Listener {
 
         clearEncounter(player.getUniqueId(), state);
         session(player).addEncounter(job);
-        player.sendTitle("§a✦ ENCOUNTER COMPLETE ✦", "§f" + def.name + " §8• §a+" + def.rewardXp + " XP", 6, 42, 10);
-        player.sendMessage("§8[§dCdrJobs§8] §a" + def.name + " completed. §7Reward: §f+" + def.rewardXp + " profession XP");
+
+        player.sendTitle("§a✦ ENCOUNTER COMPLETE ✦",
+                "§f" + def.name + " §8• §a+" + def.rewardXp + " XP", 6, 42, 10);
+        player.sendMessage("§8[§dCdrJobs§8] §a" + def.name
+                + " completed. §7Reward: §f+" + def.rewardXp + " profession XP");
+
         if (plugin.getConfig().getBoolean("living-professions.feedback.encounter-sound", true)) {
             player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.8f, 1.15f);
         }
         if (plugin.getConfig().getBoolean("living-professions.feedback.particles", true)) {
-            player.spawnParticle(Particle.END_ROD, player.getLocation().add(0, 1.0, 0), 22, 0.7, 0.8, 0.7, 0.04);
+            player.spawnParticle(Particle.END_ROD, player.getLocation().add(0, 1.0, 0),
+                    22, 0.7, 0.8, 0.7, 0.04);
         }
 
         if (def.rewardXp > 0L) {
@@ -411,80 +464,94 @@ public final class LivingProfessionsService implements Listener {
         }
     }
 
-    private void expireEncounter(UUID uuid, EncounterState state, long now) {
-        if (state.expiresAt <= now) clearEncounter(uuid, state);
-    }
-
     private void clearEncounter(UUID uuid, EncounterState state) {
         store.setFlag(uuid, state.job.name(), ENCOUNTER_ACTIVE, false);
         store.setCounter(uuid, state.job.name(), ENCOUNTER_PROGRESS, 0L);
         store.setCounter(uuid, state.job.name(), ENCOUNTER_EXPIRES, 0L);
         activeEncounters.remove(uuid);
+        encounterStateLoaded.add(uuid);
     }
 
     private EncounterDefinition definition(JobType job) {
         String root = "living-professions.encounters.definitions." + job.name();
         String name = plugin.getConfig().getString(root + ".name", defaultEncounterName(job));
         String intro = plugin.getConfig().getString(root + ".intro", defaultEncounterIntro(job));
-        long target = Math.max(1L, plugin.getConfig().getLong(root + ".target", defaultEncounterTarget(job)));
-        long duration = Math.max(5L, plugin.getConfig().getLong(root + ".duration-seconds", defaultEncounterDuration(job)));
-        long reward = Math.max(0L, plugin.getConfig().getLong(root + ".reward-xp", defaultEncounterReward(job)));
+        long target = Math.max(1L,
+                plugin.getConfig().getLong(root + ".target", defaultEncounterTarget(job)));
+        long duration = Math.max(5L,
+                plugin.getConfig().getLong(root + ".duration-seconds", defaultEncounterDuration(job)));
+        long reward = Math.max(0L,
+                plugin.getConfig().getLong(root + ".reward-xp", defaultEncounterReward(job)));
         return new EncounterDefinition(name, intro, target, duration, reward);
     }
 
     private void updateMilestones(Player player, JobType job, long amount) {
         if (!plugin.getConfig().getBoolean("living-professions.milestones.enabled", true)) return;
+
         long total = store.incrementCounter(player.getUniqueId(), job.name(), LIFETIME_ACTIONS, amount);
         long previous = Math.max(0L, total - amount);
         List<Long> thresholds = milestoneThresholds();
         for (int i = 0; i < thresholds.size(); i++) {
             long threshold = thresholds.get(i);
-            if (previous < threshold && total >= threshold) {
-                String title = milestoneTitle(job, i);
-                player.sendTitle("§b✦ PROFESSION MILESTONE ✦", "§f" + title + " §8• §7" + threshold + " actions", 8, 45, 10);
-                player.sendMessage("§8[§dCdrJobs§8] §bMilestone unlocked: §f" + title + " §8(§7" + threshold + " valid actions§8)");
-                feedbackBurst(player);
-            }
+            if (previous >= threshold || total < threshold) continue;
+
+            String title = milestoneTitle(job, i);
+            player.sendTitle("§b✦ PROFESSION MILESTONE ✦",
+                    "§f" + title + " §8• §7" + threshold + " actions", 8, 45, 10);
+            player.sendMessage("§8[§dCdrJobs§8] §bMilestone unlocked: §f" + title
+                    + " §8(§7" + threshold + " valid actions§8)");
+            feedbackBurst(player);
         }
     }
 
     private void maybeWhisper(Player player, JobType job, long now) {
         if (!plugin.getConfig().getBoolean("living-professions.fate-whispers.enabled", true)) return;
         if (!resonance.enabled()) return;
-        long readyAt = store.getAbilityReadyAt(player.getUniqueId(), "living_fate_whisper");
-        if (readyAt > now) return;
 
         double chance = Math.max(0D, Math.min(100D,
                 plugin.getConfig().getDouble("living-professions.fate-whispers.chance-percent", 0.35D)));
         if (chance <= 0D || ThreadLocalRandom.current().nextDouble(100D) >= chance) return;
 
+        UUID uuid = player.getUniqueId();
+        long readyAt = whisperReadyAt.computeIfAbsent(uuid,
+                ignored -> store.getAbilityReadyAt(uuid, WHISPER_COOLDOWN));
+        if (readyAt > now) return;
+
         List<FateResonanceService.State> candidates = new ArrayList<>();
-        for (FateResonanceService.State state : resonance.states(player.getUniqueId())) {
+        for (FateResonanceService.State state : resonance.states(uuid)) {
             if (!state.unlocked()) continue;
             FateResonanceService.Definition def = state.definition();
             if (def.first() == job || def.second() == job) candidates.add(state);
         }
         if (candidates.isEmpty()) return;
 
-        FateResonanceService.State state = candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
+        FateResonanceService.State state = candidates.get(
+                ThreadLocalRandom.current().nextInt(candidates.size()));
         long cooldown = Math.max(30L,
                 plugin.getConfig().getLong("living-professions.fate-whispers.cooldown-seconds", 300L)) * 1000L;
-        store.setAbilityReadyAt(player.getUniqueId(), "living_fate_whisper", now + cooldown);
+        long nextReady = now + cooldown;
+        whisperReadyAt.put(uuid, nextReady);
+        store.setAbilityReadyAt(uuid, WHISPER_COOLDOWN, nextReady);
 
-        String status = state.harmonized() ? "answers in perfect harmony." : "stirs as your paths converge.";
+        String status = state.harmonized()
+                ? "answers in perfect harmony."
+                : "stirs as your paths converge.";
         player.sendMessage("§d✦ Fate whispers: §f" + state.definition().name() + " §7" + status);
+
         if (plugin.getConfig().getBoolean("living-professions.feedback.fate-sound", true)) {
-            player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 0.55f, state.harmonized() ? 1.35f : 1.0f);
+            player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE,
+                    0.55f, state.harmonized() ? 1.35f : 1.0f);
         }
         if (plugin.getConfig().getBoolean("living-professions.feedback.particles", true)) {
-            player.spawnParticle(Particle.ENCHANT, player.getLocation().add(0, 1.1, 0), 10, 0.45, 0.55, 0.45, 0.02);
+            player.spawnParticle(Particle.ENCHANT, player.getLocation().add(0, 1.1, 0),
+                    10, 0.45, 0.55, 0.45, 0.02);
         }
     }
 
     private void feedbackBurst(Player player) {
-        if (plugin.getConfig().getBoolean("living-professions.feedback.particles", true)) {
-            player.spawnParticle(Particle.END_ROD, player.getLocation().add(0, 1.0, 0), 14, 0.55, 0.7, 0.55, 0.03);
-        }
+        if (!plugin.getConfig().getBoolean("living-professions.feedback.particles", true)) return;
+        player.spawnParticle(Particle.END_ROD, player.getLocation().add(0, 1.0, 0),
+                14, 0.55, 0.7, 0.55, 0.03);
     }
 
     private boolean worldBlocked(Player player) {
@@ -495,7 +562,8 @@ public final class LivingProfessionsService implements Listener {
     }
 
     private SessionState session(Player player) {
-        return sessions.computeIfAbsent(player.getUniqueId(), ignored -> new SessionState(System.currentTimeMillis()));
+        return sessions.computeIfAbsent(player.getUniqueId(),
+                ignored -> new SessionState(System.currentTimeMillis()));
     }
 
     private ProfessionActionType actionFor(JobType job) {
@@ -659,5 +727,6 @@ public final class LivingProfessionsService implements Listener {
         private void addEncounter(JobType job) { encounters.merge(job, 1L, Long::sum); }
     }
 
-    private record EncounterDefinition(String name, String intro, long target, long durationSeconds, long rewardXp) {}
+    private record EncounterDefinition(String name, String intro, long target,
+                                       long durationSeconds, long rewardXp) {}
 }
