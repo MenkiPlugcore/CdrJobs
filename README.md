@@ -3,7 +3,7 @@
 **Choose Your Path, Shape Your Fate.**
 
 Standalone fantasy profession progression for Paper 1.21.x.
-Current candidate: `v1.6.0 — Public API v2 & GUI Refresh`.
+Current candidate: `v1.7.0 — Living Professions`.
 
 ## Five Paths
 - ⛏ Runebound Delver — Miner
@@ -12,11 +12,38 @@ Current candidate: `v1.6.0 — Public API v2 & GUI Refresh`.
 - 🪓 Ironbark Warden — Lumberjack
 - 🎣 Tidebound Angler — Fisher
 
-Each profession has Lv.1–100 progression, fantasy ranks, Path of Ascension, scarce global Fate Essence, Trials, active abilities, awakened paths, post-Lv.100 Mastery, repeatable Contracts, and cross-profession Fate Resonance.
+Each profession has Lv.1–100 progression, fantasy ranks, Path of Ascension, scarce global Fate Essence, Trials, active abilities, awakened paths, post-Lv.100 Mastery, repeatable Contracts, cross-profession Fate Resonance, and Living Professions feedback/events.
+
+## Living Professions — v1.7.0
+
+The Living Professions layer makes accepted profession activity more visible without replacing the Five Paths core.
+
+- Profession Momentum: sustained accepted activity builds up to a conservative configurable XP bonus.
+- Path Encounters: profession-specific timed objectives with XP rewards.
+- Fate Whispers: atmospheric feedback for unlocked Fate Resonance pairings with no direct combat/economy power.
+- Profession Milestones: persistent accepted-action milestones with profession-specific cosmetic titles.
+- Adventure Session: `/cdrjobs session` shows current-login actions, XP, level-ups, Encounter completions and Momentum.
+- Feedback Engine: richer actionbar progress, Path Ascended / Mastery / Contract presentation, Encounter and Milestone effects.
+- World blacklist: disable only Living Professions presentation/events in selected worlds while keeping normal profession progression active.
+
+Living Professions consumes accepted `ProfessionActionEvent` activity, so its action-driven systems inherit the existing profession anti-exploit gates.
+
+Default Momentum is four stages at +2% XP per stage, capped at +8%, expiring after 45 seconds of inactivity. Fractional XP carry preserves the configured percentage on low-value actions.
+
+Default Path Encounters:
+
+- Miner — Runic Vein
+- Farmer — Blessed Harvest
+- Hunter — Marked Prey
+- Lumberjack — Ancient Grove
+- Fisher — Restless Waters
+
+Encounter state reuses existing profession tables and remains relog/restart safe without a schema migration.
 
 ## Player commands
 - `/cdrjobs` — main GUI
 - `/cdrjobs profile [player]`
+- `/cdrjobs session`
 - `/cdrjobs resonance [id]`
 - `/cdrjobs contracts`
 - `/cdrjobs contracts claim <daily|weekly>`
@@ -28,7 +55,7 @@ Each profession has Lv.1–100 progression, fantasy ranks, Path of Ascension, sc
 - `/cdrjobs stats [player]`
 - `/cdrjobs rebirth [job]`
 
-## v1.6.0 — Public API v2
+## Public API v2
 
 `CdrJobsAPI.API_VERSION = 2`.
 
@@ -44,9 +71,9 @@ API v2 keeps the original v1 progression/read methods and adds immutable snapsho
 - Fate Resonance
 - cached leaderboards
 
-CdrJobs now also publishes `CdrJobsAPI` through Bukkit `ServicesManager`, while `CdrJobsPlugin#getApi()` remains supported.
+CdrJobs also publishes `CdrJobsAPI` through Bukkit `ServicesManager`, while `CdrJobsPlugin#getApi()` remains supported.
 
-New observational Bukkit events include:
+Public observational Bukkit events include:
 - `SkillUpgradeEvent`
 - `ProfessionAwakeningEvent`
 - `TrialCompleteEvent`
@@ -62,7 +89,7 @@ See [`docs/API.md`](docs/API.md) for the complete contract.
 
 ## GUI refresh & hardening
 
-CdrJobs menus now receive a consistent stained-glass frame/theme without replacing functional items:
+CdrJobs menus use consistent profession-specific stained-glass framing without replacing functional items:
 - Main/Profile — cyan/light blue
 - Miner — gray/purple
 - Farmer — green/lime
@@ -71,17 +98,7 @@ CdrJobs menus now receive a consistent stained-glass frame/theme without replaci
 - Fisher — blue/cyan
 - Rebirth — purple/red
 
-The same layer blocks inventory drag attempts into CdrJobs GUI slots. GUI action exceptions are no longer silently swallowed; failures are logged with player/action context and the player receives a safe error message.
-
-## Audit hardening in v1.6.0
-
-- Contract reward delivery now uses per-component checkpoints for XP/Fate recovery before final `claimed` state.
-- Contract progress/percentage calculations are overflow-hardened.
-- expired Farmer/reward-location cooldown rows are pruned on startup.
-- ProfessionStore uses an SQLite busy timeout to reduce transient lock failures.
-- Trial API events only fire on incomplete -> complete transitions.
-- Hunter PvP API events only fire after existing anti-farm gates accept the kill.
-- no database schema migration; schema remains `9`.
+The same layer blocks inventory drag attempts into CdrJobs GUI slots. GUI action exceptions are logged with player/action context and the player receives a safe error message.
 
 ## Fate Resonance
 
@@ -115,6 +132,7 @@ Rebirth resets only the selected Job's skill tree. Profession level/XP, Trials, 
 - deterministic Contracts
 - post-Lv.100 Mastery
 - derived Fate Resonance
+- Living Professions Momentum / Encounters / Milestones / session feedback
 - transactional Rebirth core
 - cached leaderboard reads
 - PlaceholderAPI optional
@@ -140,7 +158,7 @@ Important commands include:
 See:
 - [`docs/TESTING.md`](docs/TESTING.md)
 - [`docs/RELEASE_PROCESS.md`](docs/RELEASE_PROCESS.md)
-- [`docs/updates/v1.6.0.md`](docs/updates/v1.6.0.md)
+- [`docs/updates/v1.7.0.md`](docs/updates/v1.7.0.md)
 
 A CI-green build is a testing candidate. Promotion to stable still requires real-server regression/restart validation.
 
@@ -149,4 +167,4 @@ A CI-green build is a testing candidate. Promotion to stable still requires real
 mvn clean verify
 ```
 
-MENKIESTESParty remains optional. Future Party integration should consume the API/events rather than CdrJobs SQLite internals.
+MENKIESTESParty remains optional. Integrations should consume the API/events rather than CdrJobs SQLite internals.
